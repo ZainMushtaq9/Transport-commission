@@ -9,7 +9,9 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
-  User 
+  User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -94,6 +96,18 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+};
+
+// Email password sign in
+export const signInWithEmail = async (email: string, pass: string): Promise<User> => {
+  const credential = await signInWithEmailAndPassword(auth, email, pass);
+  return credential.user;
+};
+
+// Email password sign up
+export const signUpWithEmail = async (email: string, pass: string): Promise<User> => {
+  const credential = await createUserWithEmailAndPassword(auth, email, pass);
+  return credential.user;
 };
 
 // Get current token

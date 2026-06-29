@@ -247,8 +247,8 @@ export default function DriversTab({
 
       {/* Driver Complete Profile Detail Dialog Modal */}
       {selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800">Driver Professional Profile</h3>
               <button
@@ -356,8 +356,8 @@ export default function DriversTab({
 
       {/* Add Vehicle Sub-Modal inside Driver Profile Details */}
       {showAddVehicle && selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-4 z-50 animate-fadeIn">
-          <form onSubmit={handleAddVehicleSubmit} className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
+          <form onSubmit={handleAddVehicleSubmit} className="bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Add Vehicle for {selectedDriver.fullName}</h3>
               <button
@@ -491,8 +491,8 @@ export default function DriversTab({
 
       {/* Add Driver Full Modal Dialog */}
       {showAddDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-4 z-50 animate-fadeIn">
-          <form onSubmit={handleAddDriverSubmit} className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
+          <form onSubmit={handleAddDriverSubmit} className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-3 my-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Register Driver Profile</h3>
               <button

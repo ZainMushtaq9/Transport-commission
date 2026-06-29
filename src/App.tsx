@@ -47,6 +47,7 @@ import DriversTab from './components/DriversTab';
 import DirectoryTab from './components/DirectoryTab';
 import SettingsTab from './components/SettingsTab';
 import SearchOverlay from './components/SearchOverlay';
+import AuthScreen from './components/AuthScreen';
 
 // Setup modules
 import { 
@@ -120,6 +121,11 @@ export default function App() {
   const [isSessionLocked, setIsSessionLocked] = useState(false);
   const lastActivityRef = useRef<number>(Date.now());
   const INACTIVITY_TIMEOUT = 300; // 5 minutes (300 seconds)
+
+  // Sandbox mode bypass
+  const [isSandboxMode, setIsSandboxMode] = useState<boolean>(() => {
+    return localStorage.getItem('tcm_sandbox_active') === 'true';
+  });
 
   // --- 1. LOCAL DATA FALLBACKS (OFFLINE-FIRST DESIGN) ---
   const loadLocalData = () => {
@@ -312,8 +318,10 @@ export default function App() {
     await logout();
     setUser(null);
     setAccessTokenState(null);
+    setIsSandboxMode(false);
+    localStorage.removeItem('tcm_sandbox_active');
     loadLocalData();
-    addNotification('Google Logged Out', 'Access token revoked. Working offline with local caches.');
+    addNotification('Logged Out', 'Successfully logged out of your session.');
   };
 
   // Helper to sync local data elements to Firestore collections
@@ -896,6 +904,28 @@ export default function App() {
   // Quick Action menu callback selectors
   const [selectedDriverForProfile, setSelectedDriverForProfile] = useState<Driver | null>(null);
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<Booking | null>(null);
+
+  if (!user && !isSandboxMode) {
+    return (
+      <AuthScreen
+        onAuthSuccess={(authenticatedUser, token) => {
+          setUser(authenticatedUser);
+          if (token) {
+            setAccessTokenState(token);
+            setAccessToken(token);
+          }
+          setIsSandboxMode(false);
+          localStorage.removeItem('tcm_sandbox_active');
+          addNotification('Welcome back', `Logged in successfully!`);
+        }}
+        onContinueAsGuest={() => {
+          setIsSandboxMode(true);
+          localStorage.setItem('tcm_sandbox_active', 'true');
+          addNotification('Sandbox Mode Enabled', 'Running in offline sandbox mode.');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none relative overflow-x-hidden antialiased text-slate-800" id="main_viewport_container">

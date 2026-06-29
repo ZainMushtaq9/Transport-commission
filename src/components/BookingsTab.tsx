@@ -311,8 +311,8 @@ export default function BookingsTab({
 
       {/* Booking Details Dialog Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800">Booking Verification & Actions</h3>
               <button
@@ -414,8 +414,8 @@ export default function BookingsTab({
 
       {/* Add Booking Modal Dialog */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end sm:items-center justify-center p-4 z-50 animate-fadeIn">
-          <form onSubmit={handleSubmit} className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
+          <form onSubmit={handleSubmit} className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800">Dispatch New Transport Order</h3>
               <button
