@@ -1,0 +1,6 @@
+{
+  "name": "Transport Commission Manager",
+  "description": "A modern, mobile-first Transport Commission Management system for agents, featuring driver profiles, vehicle logs, booking workflows, dynamic commission calculation, and Google Drive automatic backups.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
