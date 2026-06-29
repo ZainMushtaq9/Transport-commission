@@ -99,133 +99,149 @@ export default function AuthScreen({ onAuthSuccess, onContinueAsGuest }: AuthScr
           </div>
         )}
 
-        {/* Email & Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Email Address</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-3 text-slate-500">
-                <Mail size={16} />
-              </span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="manager@transport.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Password</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-3 text-slate-500">
-                <Lock size={16} />
-              </span>
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-slate-500 hover:text-slate-400"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {isSignUp && (
-            <div className="space-y-1.5 animate-fadeIn">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Confirm Password</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-3 text-slate-500">
-                  <Lock size={16} />
-                </span>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : isSignUp ? (
-              <>
-                <UserPlus size={14} /> Create Account
-              </>
-            ) : (
-              <>
-                <LogIn size={14} /> Sign In
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-slate-800"></div>
-          <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-widest text-slate-600">or connect via</span>
-          <div className="flex-grow border-t border-slate-800"></div>
-        </div>
-
-        {/* Third Party Providers */}
-        <div className="space-y-2">
+        {/* Google Sign-In Primary Action */}
+        <div className="space-y-3">
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full py-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 shadow-sm active:scale-[0.98]"
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-blue-600/10 active:scale-[0.98]"
           >
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 fill-current text-white">
+              <path fill="currentColor" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+              <path fill="currentColor" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+              <path fill="currentColor" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+              <path fill="currentColor" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
             </svg>
-            <span>Continue with Google Workspace</span>
+            <span>Continue with Google Sign-In (Enabled)</span>
           </button>
 
           <button
             onClick={onContinueAsGuest}
             disabled={loading}
-            className="w-full py-2.5 bg-slate-900/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-800 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            className="w-full py-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            <span>Continue Offline in Sandbox Mode</span>
+            <span>Run Sandbox Mode Offline</span>
             <ArrowRight size={14} />
           </button>
         </div>
 
-        {/* View Toggle */}
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setIsSignUp(!isSignUp);
-            }}
-            className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-all"
-          >
-            {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Create one"}
-          </button>
+        {/* Informative Note about Managed Permissions */}
+        <div className="bg-blue-500/10 border border-blue-500/20 text-blue-300 p-3.5 rounded-2xl text-[10px] leading-relaxed space-y-1">
+          <p className="font-bold text-blue-200">ℹ️ Managed Project Note</p>
+          <p>
+            Google Sign-In is pre-enabled for this sandbox environment. Email & Password sign-in requires administrator privileges to enable in the Firebase console.
+          </p>
         </div>
+
+        {/* Divider */}
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-slate-800"></div>
+          <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-widest text-slate-600">or Custom Database</span>
+          <div className="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        {/* Email & Password Form */}
+        <details className="group border border-slate-800 bg-slate-950/40 rounded-2xl overflow-hidden transition-all duration-300">
+          <summary className="list-none flex justify-between items-center px-4 py-3 cursor-pointer select-none text-slate-400 hover:text-slate-300">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Email & Password Form</span>
+            <span className="text-xs transition-transform duration-300 group-open:rotate-180">▼</span>
+          </summary>
+          <div className="px-4 pb-4 pt-1 space-y-4 border-t border-slate-900/60">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Email Address</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-500">
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="manager@transport.com"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Password</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-500">
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3 text-slate-500 hover:text-slate-400"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {isSignUp && (
+                <div className="space-y-1.5 animate-fadeIn">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Confirm Password</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-3 text-slate-500">
+                      <Lock size={16} />
+                    </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white placeholder-slate-600 focus:border-blue-500 focus:outline-hidden transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : isSignUp ? (
+                  <>
+                    <UserPlus size={14} /> Create Account
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={14} /> Sign In
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* View Toggle */}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setIsSignUp(!isSignUp);
+                }}
+                className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold transition-all"
+              >
+                {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Create one"}
+              </button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );
