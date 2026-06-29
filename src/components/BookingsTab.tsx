@@ -428,7 +428,7 @@ export default function BookingsTab({
             </div>
 
             {/* Select Connected Driver */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected Driver</label>
                 <select
@@ -462,7 +462,7 @@ export default function BookingsTab({
             </div>
 
             {/* Select Connected Factory & Customer warehouse */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sourcing Factory</label>
                 <select
@@ -495,7 +495,7 @@ export default function BookingsTab({
             </div>
 
             {/* Booking Date & Product details */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Booking Date</label>
                 <input
@@ -521,7 +521,7 @@ export default function BookingsTab({
             </div>
 
             {/* Financial Details */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Weight (Tons)</label>
                 <input

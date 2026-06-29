@@ -369,7 +369,7 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reg. Number (Unique)</label>
                 <input
@@ -399,7 +399,7 @@ export default function DriversTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Capacity (Tons)</label>
                 <input
@@ -437,7 +437,7 @@ export default function DriversTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Token Expiry</label>
                 <input
@@ -504,7 +504,7 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
                 <input
@@ -530,7 +530,7 @@ export default function DriversTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
                 <input
@@ -567,7 +567,7 @@ export default function DriversTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Residential Address</label>
                 <input

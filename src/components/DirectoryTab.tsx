@@ -296,7 +296,7 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Factory Name</label>
                 <input
@@ -322,7 +322,7 @@ export default function DirectoryTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
                 <input
@@ -384,7 +384,7 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Warehouse Name</label>
                 <input
@@ -410,7 +410,7 @@ export default function DirectoryTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone</label>
                 <input

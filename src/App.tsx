@@ -116,6 +116,11 @@ export default function App() {
   // Demo seed checker
   const isDataSeeded = useRef(false);
 
+  // Session inactivity states
+  const [isSessionLocked, setIsSessionLocked] = useState(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const INACTIVITY_TIMEOUT = 300; // 5 minutes (300 seconds)
+
   // --- 1. LOCAL DATA FALLBACKS (OFFLINE-FIRST DESIGN) ---
   const loadLocalData = () => {
     try {
@@ -136,147 +141,62 @@ export default function App() {
     localStorage.setItem(key, JSON.stringify(data));
   };
 
-  // Seeding initial demo registry if totally empty, so user doesn't see a blank app
+  // Ensure a clean production slate: if demo data was previously seeded, wipe it once.
   useEffect(() => {
-    const hasData = localStorage.getItem('tcm_seeded');
-    if (!hasData && drivers.length === 0 && bookings.length === 0) {
-      const demoDrivers: Driver[] = [
-        {
-          id: 'd1-uuid',
-          fullName: 'Muhammad Nawaz',
-          fatherName: 'Allah Ditta',
-          phoneNumber: '0300-1234567',
-          whatsAppNumber: '0300-1234567',
-          cnicNumber: '35201-1234567-1',
-          address: 'Gari Shahu, Lahore',
-          notes: 'Regular driver, very reliable for overnight container routes.',
-          photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
-          cnicFrontImage: '',
-          cnicBackImage: '',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoVehicles: Vehicle[] = [
-        {
-          id: 'v1-uuid',
-          driverId: 'd1-uuid',
-          registrationNumber: 'MNV-4322',
-          vehicleType: '10 Wheeler',
-          capacity: 25,
-          model: '2019 Hino',
-          color: 'Blue & White',
-          registrationBookImage: '',
-          insurance: 'Adamjee Takaful Co.',
-          fitnessExpiry: '2027-12-31',
-          tokenExpiry: '2026-12-31',
-          notes: 'Regularly checked. Fully loaded for flatbed container transport.',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoFactories: Factory[] = [
-        {
-          id: 'f1-uuid',
-          factoryName: 'Faisalabad Textile Industry',
-          managerName: 'Chaudhary Farhan',
-          phone: '0321-7654321',
-          address: 'Sargodha Road Industrial Zone, Faisalabad',
-          notes: 'Textile supply shipments daily.',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoCustomers: Customer[] = [
-        {
-          id: 'c1-uuid',
-          warehouseName: 'Metro Hub Terminal-3',
-          company: 'Metro Retail Pakistan',
-          phone: '0312-9876543',
-          address: 'Multan Road Bypass, Lahore',
-          city: 'Lahore',
-          notes: 'Direct grain delivery. Fast offloading times.',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoBookings: Booking[] = [
-        {
-          id: 'b1-uuid',
-          driverId: 'd1-uuid',
-          vehicleId: 'v1-uuid',
-          factoryId: 'f1-uuid',
-          customerId: 'c1-uuid',
-          bookingDate: new Date().toISOString().split('T')[0],
-          product: 'Cotton Yarn Bales',
-          weight: 22.5,
-          fare: 120000,
-          commission: 6000,
-          status: 'In Transit',
-          deliveryDate: new Date().toISOString().split('T')[0],
-          notes: 'Requires tarp covering to prevent damage from potential rain.',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoCommissions: Commission[] = [
-        {
-          id: 'comm1-uuid',
-          bookingId: 'b1-uuid',
-          vehicleId: 'v1-uuid',
-          driverId: 'd1-uuid',
-          factoryId: 'f1-uuid',
-          date: new Date().toISOString().split('T')[0],
-          fare: 120000,
-          commission: 6000,
-          paymentStatus: 'Unpaid',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoExpenses: Expense[] = [
-        {
-          id: 'e1-uuid',
-          date: new Date().toISOString().split('T')[0],
-          category: 'Tea/Food',
-          amount: 850,
-          description: 'Refreshments with Nawaz driver on contract closure',
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      const demoNotifications: NotificationRef[] = [
-        {
-          id: 'notif1',
-          title: 'System Initialized',
-          message: 'Transport Commission Manager database configured successfully. Local storage activated.',
-          date: new Date().toLocaleTimeString(),
-          read: false
-        }
-      ];
-
-      setDrivers(demoDrivers);
-      setVehicles(demoVehicles);
-      setFactories(demoFactories);
-      setCustomers(demoCustomers);
-      setBookings(demoBookings);
-      setCommissions(demoCommissions);
-      setExpenses(demoExpenses);
-      setNotifications(demoNotifications);
-
-      localStorage.setItem('tcm_drivers', JSON.stringify(demoDrivers));
-      localStorage.setItem('tcm_vehicles', JSON.stringify(demoVehicles));
-      localStorage.setItem('tcm_factories', JSON.stringify(demoFactories));
-      localStorage.setItem('tcm_customers', JSON.stringify(demoCustomers));
-      localStorage.setItem('tcm_bookings', JSON.stringify(demoBookings));
-      localStorage.setItem('tcm_commissions', JSON.stringify(demoCommissions));
-      localStorage.setItem('tcm_expenses', JSON.stringify(demoExpenses));
-      localStorage.setItem('tcm_notifications', JSON.stringify(demoNotifications));
-      localStorage.setItem('tcm_seeded', 'yes');
-    } else {
-      loadLocalData();
+    const wasSeeded = localStorage.getItem('tcm_seeded');
+    if (wasSeeded === 'yes') {
+      localStorage.removeItem('tcm_drivers');
+      localStorage.removeItem('tcm_vehicles');
+      localStorage.removeItem('tcm_factories');
+      localStorage.removeItem('tcm_customers');
+      localStorage.removeItem('tcm_bookings');
+      localStorage.removeItem('tcm_commissions');
+      localStorage.removeItem('tcm_expenses');
+      localStorage.removeItem('tcm_notifications');
+      localStorage.removeItem('tcm_last_backup');
+      localStorage.removeItem('tcm_seeded');
     }
+    loadLocalData();
   }, []);
+
+  // Inactivity tracking mechanism to auto logout and lock session
+  useEffect(() => {
+    if (isSessionLocked) return;
+
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    // Listen to touch/mouse/scroll/key events
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach(event => {
+      window.addEventListener(event, handleUserActivity);
+    });
+
+    const interval = setInterval(async () => {
+      const elapsedSeconds = (Date.now() - lastActivityRef.current) / 1000;
+      if (elapsedSeconds >= INACTIVITY_TIMEOUT) {
+        setIsSessionLocked(true);
+        if (auth.currentUser) {
+          try {
+            await logout();
+            setUser(null);
+            setAccessTokenState(null);
+            loadLocalData();
+          } catch (e) {
+            console.error('Error on auto session logout:', e);
+          }
+        }
+      }
+    }, 5000);
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleUserActivity);
+      });
+      clearInterval(interval);
+    };
+  }, [isSessionLocked]);
 
   // --- 2. FIRESTORE REAL-TIME SYNC ENGINE ---
   useEffect(() => {
@@ -375,6 +295,10 @@ export default function App() {
         // Upload any local data that exists to Firestore to unify registries
         await syncLocalToFirestore();
         addNotification('Google Synced', 'Authorized Google Workspace scopes and unified database.');
+
+        // Unlock security overlay on successful login
+        setIsSessionLocked(false);
+        lastActivityRef.current = Date.now();
       }
     } catch (e) {
       console.error('Google Sign In Error:', e);
@@ -1306,6 +1230,50 @@ export default function App() {
           onAddDriver={handleAddDriver}
           onAddVehicle={handleAddVehicle}
         />
+      )}
+
+      {/* 6. INACTIVITY AUTO LOGOUT LOCK SCREEN OVERLAY */}
+      {isSessionLocked && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn" id="session_locked_overlay">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center space-y-4 border border-slate-100">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <LogOut size={32} />
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-slate-900">Session Locked</h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                You have been logged out automatically due to 5 minutes of inactivity to protect your transport logs and financials.
+              </p>
+            </div>
+
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={handleLogin}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 fill-current text-white">
+                  <path fill="#ffffff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                  <path fill="#ffffff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                  <path fill="#ffffff" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                  <path fill="#ffffff" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                </svg>
+                <span>Re-login with Google</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  lastActivityRef.current = Date.now();
+                  setIsSessionLocked(false);
+                  addNotification('Session Unlocked', 'Resumed session in Sandbox Mode.');
+                }}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95"
+              >
+                Resume in Sandbox
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
