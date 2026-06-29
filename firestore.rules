@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net - catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Standard high-efficiency helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. DRIVERS collection rules
+    match /drivers/{driverId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(driverId)
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() <= 200
+        && request.resource.data.phoneNumber is string
+        && request.resource.data.phoneNumber.size() <= 30
+        && request.resource.data.cnicNumber is string
+        && request.resource.data.cnicNumber.size() <= 30;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 2. VEHICLES collection rules
+    match /vehicles/{vehicleId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(vehicleId)
+        && request.resource.data.registrationNumber is string
+        && request.resource.data.registrationNumber.size() <= 30
+        && request.resource.data.capacity is number;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 3. FACTORIES collection rules
+    match /factories/{factoryId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(factoryId)
+        && request.resource.data.factoryName is string
+        && request.resource.data.factoryName.size() <= 200;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 4. CUSTOMERS collection rules
+    match /customers/{customerId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(customerId)
+        && request.resource.data.warehouseName is string
+        && request.resource.data.warehouseName.size() <= 200;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 5. BOOKINGS collection rules
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(bookingId)
+        && request.resource.data.product is string
+        && request.resource.data.weight is number
+        && request.resource.data.fare is number
+        && request.resource.data.commission is number;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 6. COMMISSIONS collection rules
+    match /commissions/{commissionId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(commissionId)
+        && request.resource.data.commission is number
+        && request.resource.data.fare is number;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 7. EXPENSES collection rules
+    match /expenses/{expenseId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(expenseId)
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.category is string;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 8. NOTIFICATIONS collection rules
+    match /notifications/{notificationId} {
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId
+        && isValidId(notificationId)
+        && request.resource.data.title is string
+        && request.resource.data.message is string;
+
+      allow get, update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

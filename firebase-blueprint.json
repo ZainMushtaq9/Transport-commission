@@ -1,0 +1,185 @@
+{
+  "entities": {
+    "Driver": {
+      "title": "Driver",
+      "description": "Represents a vehicle driver profile containing photos, contact info, CNIC documents, and owner associations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "photo": { "type": "string" },
+        "fullName": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "whatsAppNumber": { "type": "string" },
+        "cnicNumber": { "type": "string" },
+        "cnicFrontImage": { "type": "string" },
+        "cnicBackImage": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "fullName", "phoneNumber", "cnicNumber", "userId"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Represents a transport vehicle linked to a driver, storing registration info, capacity, and model year.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "driverId": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "vehicleType": { "type": "string" },
+        "capacity": { "type": "number" },
+        "model": { "type": "string" },
+        "color": { "type": "string" },
+        "registrationBookImage": { "type": "string" },
+        "insurance": { "type": "string" },
+        "fitnessExpiry": { "type": "string" },
+        "tokenExpiry": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "driverId", "registrationNumber", "vehicleType", "capacity", "userId"]
+    },
+    "Factory": {
+      "title": "Factory",
+      "description": "Represents a sourcing partner factory where vehicles are arranged and dispatched.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "factoryName": { "type": "string" },
+        "managerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "factoryName", "managerName", "phone", "address", "userId"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Represents a customer warehouse representing delivery destinations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "warehouseName": { "type": "string" },
+        "company": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "warehouseName", "company", "phone", "address", "city", "userId"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Represents a cargo vehicle dispatch booking connecting driver, vehicle, factory, and customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "driverId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "factoryId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "bookingDate": { "type": "string" },
+        "product": { "type": "string" },
+        "weight": { "type": "number" },
+        "fare": { "type": "number" },
+        "commission": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "In Transit", "Delivered", "Cancelled"] },
+        "deliveryDate": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "driverId", "vehicleId", "factoryId", "customerId", "bookingDate", "product", "weight", "fare", "commission", "status", "userId"]
+    },
+    "Commission": {
+      "title": "Commission",
+      "description": "Represents a commission ledger entry for a cargo booking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookingId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "driverId": { "type": "string" },
+        "factoryId": { "type": "string" },
+        "date": { "type": "string" },
+        "fare": { "type": "number" },
+        "commission": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["Paid", "Unpaid"] },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "bookingId", "vehicleId", "driverId", "factoryId", "date", "fare", "commission", "paymentStatus", "userId"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Represents a business expense recorded by the commission agent.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "date", "category", "amount", "userId"]
+    },
+    "NotificationRef": {
+      "title": "NotificationRef",
+      "description": "Represents an in-app notification event card.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string" },
+        "read": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "message", "date", "read", "userId"]
+    }
+  },
+  "firestore": {
+    "drivers/{driverId}": {
+      "schema": "Driver",
+      "description": "User's registered driver registry"
+    },
+    "vehicles/{vehicleId}": {
+      "schema": "Vehicle",
+      "description": "User's vehicle fleet registry"
+    },
+    "factories/{factoryId}": {
+      "schema": "Factory",
+      "description": "Sourcing factory client registry"
+    },
+    "customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Receiving customer client registry"
+    },
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Dispatch trip bookings registry"
+    },
+    "commissions/{commissionId}": {
+      "schema": "Commission",
+      "description": "Commission financial ledgers"
+    },
+    "expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Agent operating expense logs"
+    },
+    "notifications/{notificationId}": {
+      "schema": "NotificationRef",
+      "description": "User's custom workspace activity feeds"
+    }
+  }
+}

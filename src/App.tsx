@@ -34,7 +34,9 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  query,
+  where
 } from 'firebase/firestore';
 
 // Subcomponents
@@ -300,49 +302,49 @@ export default function App() {
     if (!user) return;
 
     // Listeners for collections
-    const unsubDrivers = onSnapshot(collection(db, 'drivers'), (snap) => {
+    const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
       setDrivers(data);
       saveLocalData('tcm_drivers', data);
     });
 
-    const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snap) => {
+    const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
       setVehicles(data);
       saveLocalData('tcm_vehicles', data);
     });
 
-    const unsubFactories = onSnapshot(collection(db, 'factories'), (snap) => {
+    const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
       setFactories(data);
       saveLocalData('tcm_factories', data);
     });
 
-    const unsubCustomers = onSnapshot(collection(db, 'customers'), (snap) => {
+    const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setCustomers(data);
       saveLocalData('tcm_customers', data);
     });
 
-    const unsubBookings = onSnapshot(collection(db, 'bookings'), (snap) => {
+    const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
       setBookings(data);
       saveLocalData('tcm_bookings', data);
     });
 
-    const unsubCommissions = onSnapshot(collection(db, 'commissions'), (snap) => {
+    const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
       setCommissions(data);
       saveLocalData('tcm_commissions', data);
     });
 
-    const unsubExpenses = onSnapshot(collection(db, 'expenses'), (snap) => {
+    const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
       setExpenses(data);
       saveLocalData('tcm_expenses', data);
     });
 
-    const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snap) => {
+    const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
       setNotifications(data);
       saveLocalData('tcm_notifications', data);
@@ -407,7 +409,7 @@ export default function App() {
       for (const [colName, list] of Object.entries(collectionsToSync)) {
         for (const item of list) {
           const docRef = doc(db, colName, item.id);
-          await setDoc(docRef, item, { merge: true });
+          await setDoc(docRef, { ...item, userId: user.uid }, { merge: true });
         }
       }
     } catch (err) {
@@ -422,7 +424,8 @@ export default function App() {
       title,
       message,
       date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: false
+      read: false,
+      userId: user?.uid
     };
 
     const updated = [notif, ...notifications];
@@ -442,7 +445,8 @@ export default function App() {
     const newDriver: Driver = {
       ...driverInput,
       id: 'drv-' + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     const updated = [...drivers, newDriver];
@@ -460,7 +464,8 @@ export default function App() {
     const newVehicle: Vehicle = {
       ...vehicleInput,
       id: 'veh-' + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     const updated = [...vehicles, newVehicle];
@@ -478,7 +483,8 @@ export default function App() {
     const newFactory: Factory = {
       ...factoryInput,
       id: 'fac-' + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     const updated = [...factories, newFactory];
@@ -496,7 +502,8 @@ export default function App() {
     const newCustomer: Customer = {
       ...customerInput,
       id: 'cust-' + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     const updated = [...customers, newCustomer];
@@ -515,7 +522,8 @@ export default function App() {
     const newBooking: Booking = {
       ...bookingInput,
       id: bookingId,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     // Auto-create Commission record side-by-side
@@ -529,7 +537,8 @@ export default function App() {
       fare: bookingInput.fare,
       commission: bookingInput.commission,
       paymentStatus: 'Unpaid',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     setBookings(prev => [...prev, newBooking]);
@@ -598,7 +607,8 @@ export default function App() {
     const newExpense: Expense = {
       ...expenseInput,
       id: 'exp-' + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: user?.uid
     };
 
     const updated = [...expenses, newExpense];

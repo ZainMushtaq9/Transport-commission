@@ -16,6 +16,7 @@ export interface Driver {
   address: string;
   notes: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface Vehicle {
@@ -32,6 +33,7 @@ export interface Vehicle {
   tokenExpiry: string; // YYYY-MM-DD
   notes: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface Factory {
@@ -42,6 +44,7 @@ export interface Factory {
   address: string;
   notes: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface Customer {
@@ -53,6 +56,7 @@ export interface Customer {
   city: string;
   notes: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface Booking {
@@ -70,6 +74,7 @@ export interface Booking {
   deliveryDate: string; // YYYY-MM-DD
   notes: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface Commission {
@@ -83,6 +88,7 @@ export interface Commission {
   commission: number;
   paymentStatus: 'Paid' | 'Unpaid';
   createdAt: string;
+  userId?: string;
 }
 
 export interface Expense {
@@ -92,6 +98,7 @@ export interface Expense {
   amount: number;
   description: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface DocumentRef {
@@ -109,6 +116,7 @@ export interface NotificationRef {
   message: string;
   date: string;
   read: boolean;
+  userId?: string;
 }
 
 export interface BackupMetadata {
