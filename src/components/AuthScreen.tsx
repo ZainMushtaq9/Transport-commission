@@ -65,7 +65,13 @@ export default function AuthScreen({ onAuthSuccess, onContinueAsGuest }: AuthScr
       }
     } catch (err: any) {
       console.error(err);
-      setError("Google Sign-In failed or was cancelled.");
+      let errMsg = "Google Sign-In failed or was cancelled.";
+      if (err?.code === "auth/unauthorized-domain" || err?.message?.includes("unauthorized-domain")) {
+        errMsg = `Domain error: "${window.location.hostname}" is not authorized. Please go to the Firebase Console -> Authentication -> Settings -> Authorized Domains, and add "${window.location.hostname}" to your authorized list.`;
+      } else if (err?.message) {
+        errMsg = `Google Sign-In failed: ${err.message}`;
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

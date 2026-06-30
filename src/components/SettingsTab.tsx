@@ -294,6 +294,27 @@ export default function SettingsTab({
           </div>
         </div>
       )}
+
+      {/* Danger Zone: Reset Application Data */}
+      <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100 shadow-xs space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-red-600">
+          Danger Zone
+        </h3>
+        <p className="text-[11px] text-red-700/80 leading-relaxed font-medium">
+          If your browser contains any old cached or simulated test data, you can permanently wipe all local registries (Drivers, Vehicles, Bookings, Expenses) from your browser cache.
+        </p>
+        <button
+          onClick={() => {
+            if (window.confirm("Are you absolutely sure you want to permanently delete all local application data and cached records? This cannot be undone.")) {
+              localStorage.clear();
+              window.location.reload();
+            }
+          }}
+          className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+        >
+          Reset Application Data (Clear Cache)
+        </button>
+      </div>
     </div>
   );
 }

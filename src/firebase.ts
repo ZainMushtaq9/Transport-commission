@@ -7,6 +7,8 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   onAuthStateChanged, 
   User,
@@ -54,16 +56,33 @@ provider.addScope('https://www.googleapis.com/auth/gmail.send');
 provider.addScope('https://www.googleapis.com/auth/calendar.events');
 provider.addScope('https://www.googleapis.com/auth/contacts');
 
-// Auth states & cache
+// Auth states & cache (persisted in localStorage to retain Google Workspace scopes on refresh)
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = localStorage.getItem('tcm_google_access_token');
 
 // Initialize auth listener
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  // Try retrieving cached token from memory during session if available
+  // Check for redirect result when the app/listener initializes
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result) {
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          cachedAccessToken = credential.accessToken;
+          localStorage.setItem('tcm_google_access_token', credential.accessToken);
+          if (onAuthSuccess) {
+            onAuthSuccess(result.user, credential.accessToken);
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      console.error("Redirect auth resolution error:", err);
+    });
+
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       if (cachedAccessToken) {
@@ -78,6 +97,7 @@ export const initAuth = (
       }
     } else {
       cachedAccessToken = null;
+      localStorage.removeItem('tcm_google_access_token');
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -87,15 +107,31 @@ export const initAuth = (
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Google Auth Provider');
+    
+    // Detect mobile browser clients to prefer redirect over popup (since popups are blocked by default on mobile)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      await signInWithRedirect(auth, provider);
+      return null; // Will redirect the browser page
     }
 
-    cachedAccessToken = credential.accessToken;
-    // Store in session storage temporarily to handle hot refreshes safely (optional, but let's stick to memory per guidelines)
-    return { user: result.user, accessToken: cachedAccessToken };
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('Failed to get access token from Google Auth Provider');
+      }
+
+      cachedAccessToken = credential.accessToken;
+      localStorage.setItem('tcm_google_access_token', credential.accessToken);
+      return { user: result.user, accessToken: cachedAccessToken };
+    } catch (popupError: any) {
+      // If popup blocker intervened or it failed, fallback to redirect
+      console.warn("Popup blocked or failed, falling back to redirect:", popupError);
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
   } catch (error: any) {
     console.error('Sign in error:', error);
     throw error;
@@ -108,6 +144,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  localStorage.removeItem('tcm_google_access_token');
 };
 
 // Email password sign in
@@ -130,4 +167,5 @@ export const getAccessToken = async (): Promise<string | null> => {
 // Set token directly (useful if saved or updated)
 export const setAccessToken = (token: string) => {
   cachedAccessToken = token;
+  localStorage.setItem('tcm_google_access_token', token);
 };
