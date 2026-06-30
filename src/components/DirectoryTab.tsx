@@ -283,8 +283,8 @@ export default function DirectoryTab({
 
       {/* Add Factory Dialog modal */}
       {showAddFactory && (
-        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
-          <form onSubmit={handleFactorySubmit} className="bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-auto shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+          <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Add Sourcing Factory</h3>
               <button
@@ -371,8 +371,8 @@ export default function DirectoryTab({
 
       {/* Add Customer Dialog modal */}
       {showAddCustomer && (
-        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
-          <form onSubmit={handleCustomerSubmit} className="bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-auto shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+          <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Add Destination Customer Warehouse</h3>
               <button

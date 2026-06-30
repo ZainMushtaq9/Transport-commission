@@ -16,7 +16,8 @@ import {
   X, 
   Camera, 
   Hash,
-  ChevronRight 
+  ChevronRight,
+  Edit2
 } from 'lucide-react';
 import { Driver, Vehicle } from '../types';
 
@@ -25,17 +26,23 @@ interface DriversTabProps {
   vehicles: Vehicle[];
   onAddDriver: (driver: Omit<Driver, 'id' | 'createdAt'>) => void;
   onAddVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => void;
+  onUpdateDriver?: (id: string, driver: Partial<Omit<Driver, 'id' | 'createdAt'>>) => void;
+  onUpdateVehicle?: (id: string, vehicle: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => void;
 }
 
 export default function DriversTab({
   drivers,
   vehicles,
   onAddDriver,
-  onAddVehicle
+  onAddVehicle,
+  onUpdateDriver,
+  onUpdateVehicle
 }: DriversTabProps) {
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
   // Search input state
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,6 +71,64 @@ export default function DriversTab({
   const [tokenExp, setTokenExp] = useState(new Date().toISOString().split('T')[0]);
   const [vehicleNotes, setVehicleNotes] = useState('');
 
+  // Helpers to start editing
+  const handleEditDriverClick = (driver: Driver) => {
+    setEditingDriver(driver);
+    setFullName(driver.fullName);
+    setFatherName(driver.fatherName);
+    setPhoneNumber(driver.phoneNumber);
+    setWhatsAppNumber(driver.whatsAppNumber || '');
+    setCnicNumber(driver.cnicNumber);
+    setAddress(driver.address);
+    setDriverNotes(driver.notes || '');
+    setDriverPhoto(driver.photo || '');
+    setCnicFront(driver.cnicFrontImage || '');
+    setCnicBack(driver.cnicBackImage || '');
+    setShowAddDriver(true);
+  };
+
+  const handleEditVehicleClick = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setRegNum(vehicle.registrationNumber);
+    setVehicleType(vehicle.vehicleType);
+    setCapacity(vehicle.capacity.toString());
+    setModel(vehicle.model);
+    setColor(vehicle.color);
+    setRegBookImg(vehicle.registrationBookImage || '');
+    setInsurance(vehicle.insurance || '');
+    setFitnessExp(vehicle.fitnessExpiry);
+    setTokenExp(vehicle.tokenExpiry);
+    setVehicleNotes(vehicle.notes || '');
+    setShowAddVehicle(true);
+  };
+
+  const handleCloseDriverModal = () => {
+    setFullName('');
+    setFatherName('');
+    setPhoneNumber('');
+    setWhatsAppNumber('');
+    setCnicNumber('');
+    setAddress('');
+    setDriverNotes('');
+    setDriverPhoto('');
+    setCnicFront('');
+    setCnicBack('');
+    setEditingDriver(null);
+    setShowAddDriver(false);
+  };
+
+  const handleCloseVehicleModal = () => {
+    setRegNum('');
+    setCapacity('');
+    setModel('');
+    setColor('');
+    setRegBookImg('');
+    setInsurance('');
+    setVehicleNotes('');
+    setEditingVehicle(null);
+    setShowAddVehicle(false);
+  };
+
   // Helper: File To Base64 Reader
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>, 
@@ -86,72 +151,104 @@ export default function DriversTab({
   const handleAddDriverSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (existingCnics.includes(cnicNumber)) {
-      alert(`Error: A driver with CNIC ${cnicNumber} already exists in the system.`);
-      return;
+    if (editingDriver) {
+      if (onUpdateDriver) {
+        onUpdateDriver(editingDriver.id, {
+          fullName,
+          fatherName,
+          phoneNumber,
+          whatsAppNumber,
+          cnicNumber,
+          address,
+          notes: driverNotes,
+          photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          cnicFrontImage: cnicFront,
+          cnicBackImage: cnicBack
+        });
+      }
+      // Update selected driver state so detailed profile modal updates instantly!
+      if (selectedDriver && selectedDriver.id === editingDriver.id) {
+        setSelectedDriver({
+          ...selectedDriver,
+          fullName,
+          fatherName,
+          phoneNumber,
+          whatsAppNumber,
+          cnicNumber,
+          address,
+          notes: driverNotes,
+          photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          cnicFrontImage: cnicFront,
+          cnicBackImage: cnicBack
+        });
+      }
+    } else {
+      if (existingCnics.includes(cnicNumber)) {
+        alert(`Error: A driver with CNIC ${cnicNumber} already exists in the system.`);
+        return;
+      }
+
+      onAddDriver({
+        fullName,
+        fatherName,
+        phoneNumber,
+        whatsAppNumber,
+        cnicNumber,
+        address,
+        notes: driverNotes,
+        photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80', // Default professional avatar
+        cnicFrontImage: cnicFront,
+        cnicBackImage: cnicBack
+      });
     }
 
-    onAddDriver({
-      fullName,
-      fatherName,
-      phoneNumber,
-      whatsAppNumber,
-      cnicNumber,
-      address,
-      notes: driverNotes,
-      photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80', // Default professional avatar
-      cnicFrontImage: cnicFront,
-      cnicBackImage: cnicBack
-    });
-
-    // Reset Form
-    setFullName('');
-    setFatherName('');
-    setPhoneNumber('');
-    setWhatsAppNumber('');
-    setCnicNumber('');
-    setAddress('');
-    setDriverNotes('');
-    setDriverPhoto('');
-    setCnicFront('');
-    setCnicBack('');
-    setShowAddDriver(false);
+    handleCloseDriverModal();
   };
 
   const handleAddVehicleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const normalizedReg = regNum.trim().toUpperCase();
-    if (existingRegs.includes(normalizedReg)) {
-      alert(`Error: A vehicle with Registration Number ${normalizedReg} already exists in the system.`);
-      return;
+
+    if (editingVehicle) {
+      if (onUpdateVehicle) {
+        onUpdateVehicle(editingVehicle.id, {
+          registrationNumber: normalizedReg,
+          vehicleType,
+          capacity: parseFloat(capacity) || 0,
+          model,
+          color,
+          registrationBookImage: regBookImg,
+          insurance,
+          fitnessExpiry: fitnessExp,
+          tokenExpiry: tokenExp,
+          notes: vehicleNotes
+        });
+      }
+    } else {
+      if (existingRegs.includes(normalizedReg)) {
+        alert(`Error: A vehicle with Registration Number ${normalizedReg} already exists in the system.`);
+        return;
+      }
+
+      if (!selectedDriver) return;
+
+      onAddVehicle({
+        driverId: selectedDriver.id,
+        registrationNumber: normalizedReg,
+        vehicleType,
+        capacity: parseFloat(capacity) || 0,
+        model,
+        color,
+        registrationBookImage: regBookImg,
+        insurance,
+        fitnessExpiry: fitnessExp,
+        tokenExpiry: tokenExp,
+        notes: vehicleNotes
+      });
     }
 
-    if (!selectedDriver) return;
-
-    onAddVehicle({
-      driverId: selectedDriver.id,
-      registrationNumber: normalizedReg,
-      vehicleType,
-      capacity: parseFloat(capacity) || 0,
-      model,
-      color,
-      registrationBookImage: regBookImg,
-      insurance,
-      fitnessExpiry: fitnessExp,
-      tokenExpiry: tokenExp,
-      notes: vehicleNotes
-    });
-
-    // Reset form
-    setRegNum('');
-    setCapacity('');
-    setModel('');
-    setColor('');
-    setRegBookImg('');
-    setInsurance('');
-    setVehicleNotes('');
-    setShowAddVehicle(false);
+    handleCloseVehicleModal();
   };
 
   // Search filtered drivers list
@@ -247,16 +344,24 @@ export default function DriversTab({
 
       {/* Driver Complete Profile Detail Dialog Modal */}
       {selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-auto shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+          <div className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800">Driver Professional Profile</h3>
-              <button
-                onClick={() => setSelectedDriver(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEditDriverClick(selectedDriver)}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg transition-all"
+                >
+                  <Edit2 size={12} /> Edit Profile
+                </button>
+                <button
+                  onClick={() => setSelectedDriver(null)}
+                  className="text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Profile Summary Card */}
@@ -320,7 +425,17 @@ export default function DriversTab({
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Assigned Vehicles ({vehicles.filter(v => v.driverId === selectedDriver.id).length})</span>
                 <button
-                  onClick={() => setShowAddVehicle(true)}
+                  onClick={() => {
+                    setEditingVehicle(null);
+                    setRegNum('');
+                    setCapacity('');
+                    setModel('');
+                    setColor('');
+                    setRegBookImg('');
+                    setInsurance('');
+                    setVehicleNotes('');
+                    setShowAddVehicle(true);
+                  }}
                   className="text-xs font-bold text-blue-600 flex items-center gap-0.5"
                 >
                   <Plus size={14} /> Add Vehicle
@@ -329,10 +444,19 @@ export default function DriversTab({
 
               <div className="space-y-2">
                 {vehicles.filter(v => v.driverId === selectedDriver.id).map(v => (
-                  <div key={v.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200/50 space-y-1.5">
+                  <div key={v.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200/50 space-y-1.5 relative">
                     <div className="flex justify-between items-center">
                       <span className="font-mono text-xs font-bold text-slate-800">{v.registrationNumber}</span>
-                      <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">{v.vehicleType}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">{v.vehicleType}</span>
+                        <button
+                          onClick={() => handleEditVehicleClick(v)}
+                          className="p-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
+                          title="Edit Vehicle details"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-semibold">
                       <p>Capacity: {v.capacity} Tons</p>
@@ -356,13 +480,15 @@ export default function DriversTab({
 
       {/* Add Vehicle Sub-Modal inside Driver Profile Details */}
       {showAddVehicle && selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
-          <form onSubmit={handleAddVehicleSubmit} className="bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-auto shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+          <form onSubmit={handleAddVehicleSubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">Add Vehicle for {selectedDriver.fullName}</h3>
+              <h3 className="text-sm font-bold text-slate-800">
+                {editingVehicle ? `Edit Vehicle for ${selectedDriver.fullName}` : `Add Vehicle for ${selectedDriver.fullName}`}
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowAddVehicle(false)}
+                onClick={handleCloseVehicleModal}
                 className="text-slate-400 hover:text-slate-600 font-bold"
               >
                 <X size={18} />
@@ -483,7 +609,7 @@ export default function DriversTab({
               type="submit"
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
             >
-              Link Vehicle to Profile
+              {editingVehicle ? 'Update Vehicle Details' : 'Link Vehicle to Profile'}
             </button>
           </form>
         </div>
@@ -491,13 +617,15 @@ export default function DriversTab({
 
       {/* Add Driver Full Modal Dialog */}
       {showAddDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 flex justify-center p-4 z-50 overflow-y-auto items-start sm:items-center animate-fadeIn">
-          <form onSubmit={handleAddDriverSubmit} className="bg-white rounded-3xl w-full max-w-lg p-5 space-y-3 my-auto shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+          <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-3 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">Register Driver Profile</h3>
+              <h3 className="text-sm font-bold text-slate-800">
+                {editingDriver ? 'Edit Driver Profile' : 'Register Driver Profile'}
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowAddDriver(false)}
+                onClick={handleCloseDriverModal}
                 className="text-slate-400 hover:text-slate-600 font-bold"
               >
                 <X size={18} />
@@ -633,7 +761,7 @@ export default function DriversTab({
               type="submit"
               className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all mt-2"
             >
-              Verify & Register Driver
+              {editingDriver ? 'Update Driver Profile' : 'Verify & Register Driver'}
             </button>
           </form>
         </div>

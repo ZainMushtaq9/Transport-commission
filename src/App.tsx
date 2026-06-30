@@ -411,6 +411,36 @@ export default function App() {
     addNotification('Vehicle Registered', `Linked ${newVehicle.registrationNumber} (${newVehicle.vehicleType}) successfully.`);
   };
 
+  const handleUpdateDriver = async (id: string, driverInput: Partial<Omit<Driver, 'id' | 'createdAt'>>) => {
+    const updated = drivers.map(d => d.id === id ? { ...d, ...driverInput } as Driver : d);
+    setDrivers(updated);
+    saveLocalData('tcm_drivers', updated);
+
+    if (user) {
+      const existing = drivers.find(d => d.id === id);
+      if (existing) {
+        await setDoc(doc(db, 'drivers', id), { ...existing, ...driverInput, userId: user.uid }, { merge: true });
+      }
+    }
+
+    addNotification('Driver Updated', `Updated profile details for driver.`);
+  };
+
+  const handleUpdateVehicle = async (id: string, vehicleInput: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => {
+    const updated = vehicles.map(v => v.id === id ? { ...v, ...vehicleInput } as Vehicle : v);
+    setVehicles(updated);
+    saveLocalData('tcm_vehicles', updated);
+
+    if (user) {
+      const existing = vehicles.find(v => v.id === id);
+      if (existing) {
+        await setDoc(doc(db, 'vehicles', id), { ...existing, ...vehicleInput, userId: user.uid }, { merge: true });
+      }
+    }
+
+    addNotification('Vehicle Updated', `Updated details for ${vehicleInput.registrationNumber || 'Vehicle'}.`);
+  };
+
   const handleAddFactory = async (factoryInput: Omit<Factory, 'id' | 'createdAt'>) => {
     const newFactory: Factory = {
       ...factoryInput,
@@ -928,7 +958,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none relative overflow-x-hidden antialiased text-slate-800" id="main_viewport_container">
+    <div className="h-screen h-[100dvh] overflow-hidden bg-slate-50 flex flex-col font-sans select-none relative antialiased text-slate-800" id="main_viewport_container">
       
       {/* 1. TOP HEADER APP BAR */}
       <header className="sticky top-0 bg-white border-b border-slate-100 px-4 py-3 z-30 flex items-center justify-between shadow-xs">
@@ -1051,6 +1081,8 @@ export default function App() {
             vehicles={vehicles} 
             onAddDriver={handleAddDriver} 
             onAddVehicle={handleAddVehicle} 
+            onUpdateDriver={handleUpdateDriver}
+            onUpdateVehicle={handleUpdateVehicle}
           />
         )}
 
