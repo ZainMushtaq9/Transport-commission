@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Calendar, 
   MapPin, 
@@ -310,10 +311,10 @@ export default function BookingsTab({
       </div>
 
       {/* Booking Details Dialog Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <div className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {selectedBooking && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <div className="relative bg-white rounded-3xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Booking Verification & Actions</h3>
               <button
                 onClick={() => {
@@ -326,7 +327,7 @@ export default function BookingsTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
               {/* Core Info Summary Card */}
               <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
                 <p className="text-xs text-slate-400 font-semibold">Booking ID: {selectedBooking.id}</p>
@@ -411,7 +412,7 @@ export default function BookingsTab({
               </div>
             </div>
 
-            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
               <button
                 onClick={() => {
                   setSelectedBooking(null);
@@ -423,14 +424,15 @@ export default function BookingsTab({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Booking Modal Dialog */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <form onSubmit={handleSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <form onSubmit={handleSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Dispatch New Transport Order</h3>
               <button
                 type="button"
@@ -441,7 +443,7 @@ export default function BookingsTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
               {/* Select Connected Driver */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -587,7 +589,7 @@ export default function BookingsTab({
               </div>
             </div>
 
-            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
@@ -603,7 +605,8 @@ export default function BookingsTab({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

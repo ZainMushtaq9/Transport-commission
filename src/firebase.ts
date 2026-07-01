@@ -74,13 +74,15 @@ export const auth = authInstance || ({
 
 export const db = dbInstance || ({} as any);
 
-// Setup Google Auth Provider with Workspace Scopes
+// Setup Google Auth Providers (Basic and Workspace)
 export const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive.file');
-provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-provider.addScope('https://www.googleapis.com/auth/gmail.send');
-provider.addScope('https://www.googleapis.com/auth/calendar.events');
-provider.addScope('https://www.googleapis.com/auth/contacts');
+
+export const workspaceProvider = new GoogleAuthProvider();
+workspaceProvider.addScope('https://www.googleapis.com/auth/drive.file');
+workspaceProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+workspaceProvider.addScope('https://www.googleapis.com/auth/gmail.send');
+workspaceProvider.addScope('https://www.googleapis.com/auth/calendar.events');
+workspaceProvider.addScope('https://www.googleapis.com/auth/contacts');
 
 // Auth states & cache (persisted in localStorage to retain Google Workspace scopes on refresh)
 let isSigningIn = false;
@@ -137,10 +139,12 @@ export const initAuth = (
 };
 
 // Google sign-in flow
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (requestWorkspace = false): Promise<{ user: User; accessToken: string } | null> => {
   if (!isFirebaseConfigured) {
     throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
   }
+
+  const targetProvider = requestWorkspace ? workspaceProvider : provider;
 
   try {
     isSigningIn = true;
@@ -149,12 +153,12 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
     if (isMobile) {
-      await signInWithRedirect(auth, provider);
+      await signInWithRedirect(auth, targetProvider);
       return null; // Will redirect the browser page
     }
 
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, targetProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (!credential?.accessToken) {
         throw new Error('Failed to get access token from Google Auth Provider');
@@ -166,7 +170,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     } catch (popupError: any) {
       // If popup blocker intervened or it failed, fallback to redirect
       console.warn("Popup blocked or failed, falling back to redirect:", popupError);
-      await signInWithRedirect(auth, provider);
+      await signInWithRedirect(auth, targetProvider);
       return null;
     }
   } catch (error: any) {

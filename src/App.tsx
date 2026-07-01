@@ -173,8 +173,14 @@ export default function App() {
   useEffect(() => {
     if (isSessionLocked) return;
 
+    let lastWrite = 0;
     const handleUserActivity = () => {
-      lastActivityRef.current = Date.now();
+      const now = Date.now();
+      lastActivityRef.current = now;
+      if (now - lastWrite > 2000) {
+        localStorage.setItem('tcm_last_activity', now.toString());
+        lastWrite = now;
+      }
     };
 
     // Listen to touch/mouse/scroll/key events
@@ -187,7 +193,7 @@ export default function App() {
       const elapsedSeconds = (Date.now() - lastActivityRef.current) / 1000;
       if (elapsedSeconds >= INACTIVITY_TIMEOUT) {
         setIsSessionLocked(true);
-        if (auth.currentUser) {
+        if (auth.currentUser || isSandboxMode) {
           try {
             await logout();
             setUser(null);
@@ -206,7 +212,7 @@ export default function App() {
       });
       clearInterval(interval);
     };
-  }, [isSessionLocked]);
+  }, [isSessionLocked, isSandboxMode]);
 
   // --- 2. FIRESTORE REAL-TIME SYNC ENGINE ---
   useEffect(() => {
@@ -218,7 +224,29 @@ export default function App() {
 
     // Listen to Firebase Auth state
     const unsubAuth = initAuth(
-      (currentUser, token) => {
+      async (currentUser, token) => {
+        const lastActivityStr = localStorage.getItem('tcm_last_activity');
+        if (lastActivityStr) {
+          const lastActivity = Number(lastActivityStr);
+          const elapsedSeconds = (Date.now() - lastActivity) / 1000;
+          if (elapsedSeconds >= INACTIVITY_TIMEOUT) {
+            // Expired session on load - log out immediately
+            try {
+              await logout();
+            } catch (e) {
+              console.error(e);
+            }
+            setUser(null);
+            setAccessTokenState(null);
+            setIsSessionLocked(true);
+            setIsAuthLoading(false);
+            return;
+          }
+        }
+
+        // Active session - refresh last activity and resume
+        localStorage.setItem('tcm_last_activity', Date.now().toString());
+        lastActivityRef.current = Date.now();
         setUser(currentUser);
         if (token) setAccessTokenState(token);
         setIsAuthLoading(false);
@@ -548,7 +576,7 @@ export default function App() {
   // --- 3. GOOGLE WORKSPACE LINKING ---
   const handleLinkGoogle = async () => {
     try {
-      const result = await googleSignIn();
+      const result = await googleSignIn(true); // true: request Google Workspace sensitive scopes
       if (result) {
         setAccessTokenState(result.accessToken);
         setAccessToken(result.accessToken);
@@ -566,6 +594,7 @@ export default function App() {
     setAccessTokenState(null);
     setIsSandboxMode(false);
     localStorage.removeItem('tcm_sandbox_active');
+    localStorage.removeItem('tcm_last_activity');
     loadLocalData();
     addNotification('Logged Out', 'Successfully logged out of your session.');
   };
@@ -1252,6 +1281,11 @@ export default function App() {
           setIsSandboxMode(false);
           localStorage.removeItem('tcm_sandbox_active');
           addNotification('Welcome back', `Logged in successfully!`);
+        }}
+        onEnterSandboxMode={() => {
+          setIsSandboxMode(true);
+          localStorage.setItem('tcm_sandbox_active', 'true');
+          addNotification('Sandbox Activated', 'Running in local storage sandbox mode.');
         }}
       />
     );

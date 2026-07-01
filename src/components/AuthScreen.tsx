@@ -5,9 +5,10 @@ import { User } from 'firebase/auth';
 
 interface AuthScreenProps {
   onAuthSuccess: (user: User, accessToken: string | null) => void;
+  onEnterSandboxMode: () => void;
 }
 
-export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,6 +48,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         errMsg = "Password should be at least 6 characters.";
       } else if (err.code === "auth/invalid-email") {
         errMsg = "Please enter a valid email address.";
+      } else if (err.code === "auth/network-request-failed" || err.message?.includes("network-request-failed")) {
+        errMsg = "Network connection to Firebase Auth failed. If you are using the app inside an iframe preview, cross-site cookies or API endpoints might be blocked. Try running the app in 'Offline Sandbox Mode' below.";
       }
       setError(errMsg);
     } finally {
@@ -58,13 +61,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setError(null);
     setLoading(true);
     try {
-      const result = await googleSignIn();
+      const result = await googleSignIn(false); // false: request standard auth profile scopes only, no workspace scopes!
       if (result) {
         onAuthSuccess(result.user, result.accessToken);
       }
     } catch (err: any) {
       console.error(err);
-      setError("Google Sign-In failed. Please try again or use your Email/Password.");
+      let errMsg = err.message || "Google Sign-In failed.";
+      if (errMsg.includes("network-request-failed") || err.code === "auth/network-request-failed") {
+        errMsg = "Network/Cookie error. Please enable cross-site cookies or run in Offline Sandbox Mode.";
+      }
+      setError(errMsg + " Try 'Offline Sandbox Mode' below if you are inside an iframe preview.");
     } finally {
       setLoading(false);
     }
@@ -92,9 +99,20 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold flex items-center gap-2.5 animate-shake">
-            <AlertCircle size={16} className="shrink-0 text-red-500" />
-            <span>{error}</span>
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold flex flex-col gap-2 animate-shake">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle size={16} className="shrink-0 text-red-500" />
+              <span>{error}</span>
+            </div>
+            {error.includes("Sandbox") && (
+              <button
+                type="button"
+                onClick={onEnterSandboxMode}
+                className="mt-2 text-left text-xs text-blue-400 hover:text-blue-300 font-bold underline transition-all"
+              >
+                Go to Sandbox Mode Now →
+              </button>
+            )}
           </div>
         )}
 
@@ -181,7 +199,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </form>
 
           {/* Social Divider and Google OAuth login */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-800"></div>
@@ -217,6 +235,29 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </svg>
               <span>Sign In with Google</span>
             </button>
+          </div>
+
+          {/* Offline Sandbox Mode Switch */}
+          <div className="space-y-4 pt-2">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800"></div>
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-slate-900 px-2 text-slate-500 font-bold tracking-wider">Trouble with sign in?</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onEnterSandboxMode}
+              className="w-full py-2.5 bg-slate-950 border border-dashed border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
+            >
+              <span>Continue in Offline Sandbox Mode</span>
+            </button>
+            <p className="text-[10px] text-slate-500 text-center font-medium max-w-[280px] mx-auto leading-relaxed">
+              Sandbox mode runs fully offline inside your browser. No Firebase database configuration is needed!
+            </p>
           </div>
 
           {/* View Toggle */}

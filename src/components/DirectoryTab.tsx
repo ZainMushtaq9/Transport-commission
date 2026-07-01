@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Building2, 
   MapPin, 
@@ -282,10 +283,10 @@ export default function DirectoryTab({
       </div>
 
       {/* Add Factory Dialog modal */}
-      {showAddFactory && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {showAddFactory && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Add Sourcing Factory</h3>
               <button
                 type="button"
@@ -296,7 +297,7 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Factory Name</label>
@@ -361,7 +362,7 @@ export default function DirectoryTab({
               </div>
             </div>
 
-            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowAddFactory(false)}
@@ -377,14 +378,15 @@ export default function DirectoryTab({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Customer Dialog modal */}
-      {showAddCustomer && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {showAddCustomer && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Add Destination Customer Warehouse</h3>
               <button
                 type="button"
@@ -395,7 +397,7 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Warehouse Name</label>
@@ -472,7 +474,7 @@ export default function DirectoryTab({
               </div>
             </div>
 
-            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowAddCustomer(false)}
@@ -488,7 +490,8 @@ export default function DirectoryTab({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

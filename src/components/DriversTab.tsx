@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   User, 
   Truck, 
@@ -343,10 +344,10 @@ export default function DriversTab({
       </div>
 
       {/* Driver Complete Profile Detail Dialog Modal */}
-      {selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeBackdrop">
-          <div className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+      {selectedDriver && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <div className="relative bg-white rounded-3xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Driver Professional Profile</h3>
               <div className="flex items-center gap-2">
                 <button
@@ -363,6 +364,8 @@ export default function DriversTab({
                 </button>
               </div>
             </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
 
             {/* Profile Summary Card */}
             <div className="flex items-start gap-4">
@@ -474,15 +477,27 @@ export default function DriversTab({
                 ))}
               </div>
             </div>
+            </div>
+
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedDriver(null)}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Close Profile
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Vehicle Sub-Modal inside Driver Profile Details */}
-      {showAddVehicle && selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <form onSubmit={handleAddVehicleSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {showAddVehicle && selectedDriver && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <form onSubmit={handleAddVehicleSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">
                 {editingVehicle ? `Edit Vehicle for ${selectedDriver.fullName}` : `Add Vehicle for ${selectedDriver.fullName}`}
               </h3>
@@ -495,7 +510,7 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reg. Number (Unique)</label>
@@ -623,12 +638,13 @@ export default function DriversTab({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}      {/* Add Driver Full Modal Dialog */}
-      {showAddDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
-          <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
-            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
+      {showAddDriver && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
+          <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">
                 {editingDriver ? 'Edit Driver Profile' : 'Register Driver Profile'}
               </h3>
@@ -641,7 +657,7 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-3 sm:space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
@@ -768,7 +784,7 @@ export default function DriversTab({
               </div>
             </div>
 
-            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+            <div className="border-t border-slate-100 p-4 sm:p-5 bg-slate-50 shrink-0 flex gap-3">
               <button
                 type="button"
                 onClick={handleCloseDriverModal}
@@ -784,7 +800,8 @@ export default function DriversTab({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
