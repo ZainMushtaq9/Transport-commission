@@ -108,6 +108,7 @@ export const initAuth = (
         if (credential?.accessToken) {
           cachedAccessToken = credential.accessToken;
           localStorage.setItem('tcm_google_access_token', credential.accessToken);
+          localStorage.setItem('tcm_last_activity', Date.now().toString());
           if (onAuthSuccess) {
             onAuthSuccess(result.user, credential.accessToken);
           }
@@ -166,10 +167,12 @@ export const googleSignIn = async (requestWorkspace = false): Promise<{ user: Us
 
       cachedAccessToken = credential.accessToken;
       localStorage.setItem('tcm_google_access_token', credential.accessToken);
+      localStorage.setItem('tcm_last_activity', Date.now().toString());
       return { user: result.user, accessToken: cachedAccessToken };
     } catch (popupError: any) {
       // If popup blocker intervened or it failed, fallback to redirect
       console.warn("Popup blocked or failed, falling back to redirect:", popupError);
+      localStorage.setItem('tcm_last_activity', Date.now().toString());
       await signInWithRedirect(auth, targetProvider);
       return null;
     }
@@ -196,6 +199,7 @@ export const signInWithEmail = async (email: string, pass: string): Promise<User
     throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
   }
   const credential = await signInWithEmailAndPassword(auth, email, pass);
+  localStorage.setItem('tcm_last_activity', Date.now().toString());
   return credential.user;
 };
 
@@ -205,6 +209,7 @@ export const signUpWithEmail = async (email: string, pass: string): Promise<User
     throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
   }
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
+  localStorage.setItem('tcm_last_activity', Date.now().toString());
   return credential.user;
 };
 

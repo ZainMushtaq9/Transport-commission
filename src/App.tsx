@@ -1273,6 +1273,9 @@ export default function App() {
     return (
       <AuthScreen
         onAuthSuccess={(authenticatedUser, token) => {
+          localStorage.setItem('tcm_last_activity', Date.now().toString());
+          lastActivityRef.current = Date.now();
+          setIsSessionLocked(false);
           setUser(authenticatedUser);
           if (token) {
             setAccessTokenState(token);
@@ -1283,6 +1286,9 @@ export default function App() {
           addNotification('Welcome back', `Logged in successfully!`);
         }}
         onEnterSandboxMode={() => {
+          localStorage.setItem('tcm_last_activity', Date.now().toString());
+          lastActivityRef.current = Date.now();
+          setIsSessionLocked(false);
           setIsSandboxMode(true);
           localStorage.setItem('tcm_sandbox_active', 'true');
           addNotification('Sandbox Activated', 'Running in local storage sandbox mode.');
