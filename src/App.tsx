@@ -22,7 +22,8 @@ import {
   Check, 
   X, 
   Database, 
-  LogOut 
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { 
@@ -288,29 +289,18 @@ export default function App() {
     };
   }, [user]);
 
-  // --- 3. GOOGLE SIGN-IN FLOW ---
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
+  // --- 3. GOOGLE WORKSPACE LINKING ---
+  const handleLinkGoogle = async () => {
     try {
       const result = await googleSignIn();
       if (result) {
-        setUser(result.user);
         setAccessTokenState(result.accessToken);
         setAccessToken(result.accessToken);
-
-        // Upload any local data that exists to Firestore to unify registries
-        await syncLocalToFirestore();
-        addNotification('Google Synced', 'Authorized Google Workspace scopes and unified database.');
-
-        // Unlock security overlay on successful login
-        setIsSessionLocked(false);
-        lastActivityRef.current = Date.now();
+        addNotification('Google Workspace Linked', 'Authorized Google Workspace scopes successfully.');
       }
     } catch (e) {
-      console.error('Google Sign In Error:', e);
-      alert('Login failed: ' + (e as Error).message);
-    } finally {
-      setIsLoggingIn(false);
+      console.error('Google Link Error:', e);
+      alert('Google Workspace link failed: ' + (e as Error).message);
     }
   };
 
@@ -948,11 +938,6 @@ export default function App() {
           localStorage.removeItem('tcm_sandbox_active');
           addNotification('Welcome back', `Logged in successfully!`);
         }}
-        onContinueAsGuest={() => {
-          setIsSandboxMode(true);
-          localStorage.setItem('tcm_sandbox_active', 'true');
-          addNotification('Sandbox Mode Enabled', 'Running in offline sandbox mode.');
-        }}
       />
     );
   }
@@ -1033,6 +1018,16 @@ export default function App() {
               </div>
             )}
           </div>
+
+          {/* Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all flex items-center justify-center"
+            title="Log Out"
+            id="logout_header_btn"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </header>
 
@@ -1101,7 +1096,7 @@ export default function App() {
           <SettingsTab 
             user={user} 
             accessToken={accessToken}
-            onLogin={handleLogin} 
+            onLogin={handleLinkGoogle} 
             onLogout={handleLogout}
             backupMetadata={backupMetadata}
             onTriggerBackup={handleTriggerBackup}
@@ -1309,29 +1304,17 @@ export default function App() {
               </p>
             </div>
 
-            <div className="pt-2 space-y-2">
+            <div className="pt-2">
               <button
-                onClick={handleLogin}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 fill-current text-white">
-                  <path fill="#ffffff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                  <path fill="#ffffff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                  <path fill="#ffffff" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                  <path fill="#ffffff" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                </svg>
-                <span>Re-login with Google</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  lastActivityRef.current = Date.now();
+                onClick={async () => {
+                  await handleLogout();
                   setIsSessionLocked(false);
-                  addNotification('Session Unlocked', 'Resumed session in Sandbox Mode.');
                 }}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                id="relogin_btn"
               >
-                Resume in Sandbox
+                <LogIn size={14} />
+                <span>Log In with Email & Password</span>
               </button>
             </div>
           </div>
