@@ -80,6 +80,7 @@ import {
   NotificationRef, 
   BackupMetadata 
 } from './types';
+import { syncEngine } from './utils/syncEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'commissions' | 'drivers' | 'directory' | 'settings'>('dashboard');
@@ -288,6 +289,190 @@ export default function App() {
       unsubNotifications();
     };
   }, [user]);
+
+  // Restore cached Google access token if exists
+  useEffect(() => {
+    const savedToken = localStorage.getItem('tcm_google_access_token');
+    if (savedToken) {
+      setAccessTokenState(savedToken);
+    }
+  }, []);
+
+  // Background sync processing for enqueued items whenever we obtain an access token
+  useEffect(() => {
+    if (accessToken && user) {
+      syncEngine.drainQueue(accessToken, user.uid);
+    }
+  }, [accessToken, user]);
+
+  // Document media sync effect - automatically extracts and uploads base64 documents to Google Drive in the background,
+  // then updates the Firestore reference and local storage.
+  useEffect(() => {
+    if (!accessToken || !user) return;
+
+    let isSubscribed = true;
+
+    const autoSyncDocuments = async () => {
+      // 1. Process Drivers
+      let driversChanged = false;
+      const updatedDrivers = await Promise.all(drivers.map(async (d) => {
+        let updated = { ...d };
+        if (d.photo && d.photo.startsWith('data:')) {
+          const fileName = `${d.id}_photo.jpg`;
+          try {
+            const folders = await setupFolderStructure(accessToken);
+            const fileId = await syncEngine.syncDocumentToDrive(accessToken, folders.documents.driverPhotosFolderId, fileName, d.photo);
+            if (fileId && isSubscribed) {
+              updated.photo = `https://drive.google.com/uc?export=view&id=${fileId}`;
+              driversChanged = true;
+            }
+          } catch (err) {
+            console.error('Failed syncing photo for driver', d.fullName, err);
+          }
+        }
+        if (d.cnicFrontImage && d.cnicFrontImage.startsWith('data:')) {
+          const fileName = `${d.id}_cnic_front.jpg`;
+          try {
+            const folders = await setupFolderStructure(accessToken);
+            const fileId = await syncEngine.syncDocumentToDrive(accessToken, folders.documents.cnicFrontFolderId, fileName, d.cnicFrontImage);
+            if (fileId && isSubscribed) {
+              updated.cnicFrontImage = `https://drive.google.com/uc?export=view&id=${fileId}`;
+              driversChanged = true;
+            }
+          } catch (err) {
+            console.error('Failed syncing cnic front for driver', d.fullName, err);
+          }
+        }
+        if (d.cnicBackImage && d.cnicBackImage.startsWith('data:')) {
+          const fileName = `${d.id}_cnic_back.jpg`;
+          try {
+            const folders = await setupFolderStructure(accessToken);
+            const fileId = await syncEngine.syncDocumentToDrive(accessToken, folders.documents.cnicBackFolderId, fileName, d.cnicBackImage);
+            if (fileId && isSubscribed) {
+              updated.cnicBackImage = `https://drive.google.com/uc?export=view&id=${fileId}`;
+              driversChanged = true;
+            }
+          } catch (err) {
+            console.error('Failed syncing cnic back for driver', d.fullName, err);
+          }
+        }
+        return updated;
+      }));
+
+      if (driversChanged && isSubscribed) {
+        setDrivers(updatedDrivers);
+        saveLocalData('tcm_drivers', updatedDrivers);
+        for (const d of updatedDrivers) {
+          await setDoc(doc(db, 'drivers', d.id), d);
+        }
+      }
+
+      // 2. Process Vehicles
+      let vehiclesChanged = false;
+      const updatedVehicles = await Promise.all(vehicles.map(async (v) => {
+        let updated = { ...v };
+        if (v.registrationBookImage && v.registrationBookImage.startsWith('data:')) {
+          const fileName = `${v.id}_reg_book.jpg`;
+          try {
+            const folders = await setupFolderStructure(accessToken);
+            const fileId = await syncEngine.syncDocumentToDrive(accessToken, folders.documents.vehicleRegBooksFolderId, fileName, v.registrationBookImage);
+            if (fileId && isSubscribed) {
+              updated.registrationBookImage = `https://drive.google.com/uc?export=view&id=${fileId}`;
+              vehiclesChanged = true;
+            }
+          } catch (err) {
+            console.error('Failed syncing reg book for vehicle', v.registrationNumber, err);
+          }
+        }
+        return updated;
+      }));
+
+      if (vehiclesChanged && isSubscribed) {
+        setVehicles(updatedVehicles);
+        saveLocalData('tcm_vehicles', updatedVehicles);
+        for (const v of updatedVehicles) {
+          await setDoc(doc(db, 'vehicles', v.id), v);
+        }
+      }
+    };
+
+    autoSyncDocuments();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [drivers, vehicles, accessToken, user]);
+
+  // Entity-level synchronization listeners
+  const lastDriversRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(drivers);
+    if (serialized !== lastDriversRef.current) {
+      lastDriversRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Drivers', 'all', drivers);
+    }
+  }, [drivers, accessToken, user]);
+
+  const lastVehiclesRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(vehicles);
+    if (serialized !== lastVehiclesRef.current) {
+      lastVehiclesRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Vehicles', 'all', vehicles);
+    }
+  }, [vehicles, accessToken, user]);
+
+  const lastFactoriesRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(factories);
+    if (serialized !== lastFactoriesRef.current) {
+      lastFactoriesRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Factories', 'all', factories);
+    }
+  }, [factories, accessToken, user]);
+
+  const lastCustomersRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(customers);
+    if (serialized !== lastCustomersRef.current) {
+      lastCustomersRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Customers', 'all', customers);
+    }
+  }, [customers, accessToken, user]);
+
+  const lastBookingsRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(bookings);
+    if (serialized !== lastBookingsRef.current) {
+      lastBookingsRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Bookings', 'all', bookings);
+    }
+  }, [bookings, accessToken, user]);
+
+  const lastCommissionsRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(commissions);
+    if (serialized !== lastCommissionsRef.current) {
+      lastCommissionsRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Commissions', 'all', commissions);
+    }
+  }, [commissions, accessToken, user]);
+
+  const lastExpensesRef = useRef('');
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const serialized = JSON.stringify(expenses);
+    if (serialized !== lastExpensesRef.current) {
+      lastExpensesRef.current = serialized;
+      syncEngine.enqueueSync(accessToken, user.uid, 'Modify', 'Expenses', 'all', expenses);
+    }
+  }, [expenses, accessToken, user]);
 
   // --- 3. GOOGLE WORKSPACE LINKING ---
   const handleLinkGoogle = async () => {

@@ -17,10 +17,14 @@ import {
   CheckCircle2, 
   Database, 
   ArrowLeftRight,
-  LogIn
+  LogIn,
+  Activity,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { BackupMetadata } from '../types';
+import { syncEngine, ActivityLog } from '../utils/syncEngine';
 
 interface SettingsTabProps {
   user: User | null;
@@ -56,6 +60,30 @@ export default function SettingsTab({
   const [selectedReportType, setSelectedReportType] = useState('commission');
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
+
+  // Background Sync status states
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [onlineStatus, setOnlineStatus] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    setActivityLogs(syncEngine.getLocalLogs());
+
+    const interval = setInterval(() => {
+      setActivityLogs(syncEngine.getLocalLogs());
+    }, 3000);
+
+    const handleOnline = () => setOnlineStatus(true);
+    const handleOffline = () => setOnlineStatus(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Load drive backups list if authenticated
   useEffect(() => {
@@ -300,6 +328,79 @@ export default function SettingsTab({
           </div>
         </div>
       )}
+
+      {/* Background Silent Synchronization & Queue Monitor */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <Activity size={14} className="text-emerald-500 animate-pulse" /> Live Synchronizer Status
+          </h3>
+          <div className="flex items-center gap-2">
+            {onlineStatus ? (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Wifi size={10} /> Device Online
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                <WifiOff size={10} /> Offline Queueing
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-700">Event-Driven Cloud Sync</p>
+              <p className="text-[9px] text-slate-400 font-semibold">
+                Continuous incremental backup mapping DB entries silently.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold text-slate-800">
+                {accessToken ? "✓ Configured" : "⚠️ Unauthorized"}
+              </p>
+              <p className="text-[9px] text-slate-400 font-bold">
+                {accessToken ? "Silent uploads active" : "Grant permissions to activate"}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Recent Sync Activity Logs</span>
+            {activityLogs.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-2xl border border-dashed">
+                No active synchronizations recorded yet.
+              </p>
+            ) : (
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {activityLogs.map((log, idx) => (
+                  <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center gap-2 text-slate-700">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-800">{log.operation} {log.entity}</span>
+                        <span className="text-[8px] font-mono text-slate-400">({log.recordId})</span>
+                      </div>
+                      <p className="text-[9px] text-slate-400 font-bold truncate">
+                        {log.timestamp} {log.errorDetails ? `| Error: ${log.errorDetails}` : ''}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                      log.status === 'Synced Successfully' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        : log.status === 'Pending Sync (Offline)'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse'
+                        : 'bg-red-50 text-red-700 border border-red-100'
+                    }`}>
+                      {log.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Danger Zone: Reset Application Data */}
       <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100 shadow-xs space-y-3">

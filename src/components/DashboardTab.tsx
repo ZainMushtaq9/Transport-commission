@@ -193,14 +193,14 @@ export default function DashboardTab({
   return (
     <div className="space-y-6 pb-24" id="dashboard_tab_container">
       {/* Date Range Selector Bar */}
-      <div className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-xs border border-slate-100">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between bg-white p-3 rounded-2xl shadow-xs border border-slate-100 gap-2">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Period</span>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full scrollbar-none">
           {(['today', 'week', 'month', 'year', 'all'] as const).map(range => (
             <button
               key={range}
               onClick={() => setDateRange(range)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all ${
+              className={`shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all ${
                 dateRange === range
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-800'

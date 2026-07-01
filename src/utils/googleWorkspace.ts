@@ -62,32 +62,130 @@ export async function getOrCreateFolder(
   return createData.id;
 }
 
-// 2. Setup standard folder structure:
-// Transport Commission Manager/
-//   Database/
-//   Documents/
-//   Images/
-//   Backups/
-export async function setupFolderStructure(accessToken: string): Promise<{
+export interface FullFolderStructure {
   rootFolderId: string;
   databaseFolderId: string;
+  database: {
+    driversFolderId: string;
+    vehiclesFolderId: string;
+    factoriesFolderId: string;
+    customersFolderId: string;
+    bookingsFolderId: string;
+    commissionsFolderId: string;
+    expensesFolderId: string;
+    reportsFolderId: string;
+    activityLogsFolderId: string;
+  };
   documentsFolderId: string;
+  documents: {
+    driverPhotosFolderId: string;
+    cnicFrontFolderId: string;
+    cnicBackFolderId: string;
+    vehicleRegBooksFolderId: string;
+    deliveryChallansFolderId: string;
+    invoicesFolderId: string;
+    otherDocsFolderId: string;
+  };
   imagesFolderId: string;
+  exportsFolderId: string;
   backupsFolderId: string;
-}> {
+  backups: {
+    dailyFolderId: string;
+    weeklyFolderId: string;
+    monthlyFolderId: string;
+    fullDbFolderId: string;
+  };
+  metadataFolderId: string;
+}
+
+// 2. Setup standard folder structure recursively
+export async function setupFolderStructure(accessToken: string): Promise<FullFolderStructure> {
+  // Check local cache first to avoid slow repetitive Drive queries
+  const cached = localStorage.getItem('tcm_gdrive_folders_v2');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.rootFolderId && parsed.database && parsed.documents && parsed.backups) {
+        return parsed as FullFolderStructure;
+      }
+    } catch (_) {
+      // Ignore parse error and rebuild
+    }
+  }
+
+  // A. Create main top-level folders
   const rootFolderId = await getOrCreateFolder(accessToken, 'Transport Commission Manager');
   const databaseFolderId = await getOrCreateFolder(accessToken, 'Database', rootFolderId);
   const documentsFolderId = await getOrCreateFolder(accessToken, 'Documents', rootFolderId);
   const imagesFolderId = await getOrCreateFolder(accessToken, 'Images', rootFolderId);
+  const exportsFolderId = await getOrCreateFolder(accessToken, 'Exports', rootFolderId);
   const backupsFolderId = await getOrCreateFolder(accessToken, 'Backups', rootFolderId);
+  const metadataFolderId = await getOrCreateFolder(accessToken, 'Metadata', rootFolderId);
 
-  return {
+  // B. Create sub-folders under Database/
+  const driversFolderId = await getOrCreateFolder(accessToken, 'Drivers', databaseFolderId);
+  const vehiclesFolderId = await getOrCreateFolder(accessToken, 'Vehicles', databaseFolderId);
+  const factoriesFolderId = await getOrCreateFolder(accessToken, 'Factories', databaseFolderId);
+  const customersFolderId = await getOrCreateFolder(accessToken, 'Customers', databaseFolderId);
+  const bookingsFolderId = await getOrCreateFolder(accessToken, 'Bookings', databaseFolderId);
+  const commissionsFolderId = await getOrCreateFolder(accessToken, 'Commissions', databaseFolderId);
+  const expensesFolderId = await getOrCreateFolder(accessToken, 'Expenses', databaseFolderId);
+  const reportsFolderId = await getOrCreateFolder(accessToken, 'Reports', databaseFolderId);
+  const activityLogsFolderId = await getOrCreateFolder(accessToken, 'Activity Logs', databaseFolderId);
+
+  // C. Create sub-folders under Documents/
+  const driverPhotosFolderId = await getOrCreateFolder(accessToken, 'Driver Photos', documentsFolderId);
+  const cnicFrontFolderId = await getOrCreateFolder(accessToken, 'CNIC Front', documentsFolderId);
+  const cnicBackFolderId = await getOrCreateFolder(accessToken, 'CNIC Back', documentsFolderId);
+  const vehicleRegBooksFolderId = await getOrCreateFolder(accessToken, 'Vehicle Registration Books', documentsFolderId);
+  const deliveryChallansFolderId = await getOrCreateFolder(accessToken, 'Delivery Challans', documentsFolderId);
+  const invoicesFolderId = await getOrCreateFolder(accessToken, 'Invoices', documentsFolderId);
+  const otherDocsFolderId = await getOrCreateFolder(accessToken, 'Other Documents', documentsFolderId);
+
+  // D. Create sub-folders under Backups/
+  const dailyFolderId = await getOrCreateFolder(accessToken, 'Daily', backupsFolderId);
+  const weeklyFolderId = await getOrCreateFolder(accessToken, 'Weekly', backupsFolderId);
+  const monthlyFolderId = await getOrCreateFolder(accessToken, 'Monthly', backupsFolderId);
+  const fullDbFolderId = await getOrCreateFolder(accessToken, 'Full Database', backupsFolderId);
+
+  const fullStructure: FullFolderStructure = {
     rootFolderId,
     databaseFolderId,
+    database: {
+      driversFolderId,
+      vehiclesFolderId,
+      factoriesFolderId,
+      customersFolderId,
+      bookingsFolderId,
+      commissionsFolderId,
+      expensesFolderId,
+      reportsFolderId,
+      activityLogsFolderId,
+    },
     documentsFolderId,
+    documents: {
+      driverPhotosFolderId,
+      cnicFrontFolderId,
+      cnicBackFolderId,
+      vehicleRegBooksFolderId,
+      deliveryChallansFolderId,
+      invoicesFolderId,
+      otherDocsFolderId,
+    },
     imagesFolderId,
+    exportsFolderId,
     backupsFolderId,
+    backups: {
+      dailyFolderId,
+      weeklyFolderId,
+      monthlyFolderId,
+      fullDbFolderId,
+    },
+    metadataFolderId,
   };
+
+  localStorage.setItem('tcm_gdrive_folders_v2', JSON.stringify(fullStructure));
+  return fullStructure;
 }
 
 // 3. Backup database payload to Google Drive (saves under Backups/)
