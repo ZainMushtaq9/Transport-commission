@@ -42,11 +42,37 @@ const resolvedConfig = {
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfig.measurementId || ""
 };
 
-const app = initializeApp(resolvedConfig);
+// Check if configuration has valid production parameters, otherwise default to offline fallback
+export const isFirebaseConfigured = !!(
+  resolvedConfig.apiKey &&
+  resolvedConfig.apiKey !== 'your-api-key' &&
+  !resolvedConfig.apiKey.includes('your-') &&
+  resolvedConfig.projectId &&
+  resolvedConfig.projectId !== 'your-project-id'
+);
 
-// Initialize Firebase Services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+let app: any = null;
+let authInstance: any = null;
+let dbInstance: any = null;
+
+if (isFirebaseConfigured) {
+  try {
+    app = initializeApp(resolvedConfig);
+    authInstance = getAuth(app);
+    dbInstance = getFirestore(app);
+  } catch (err) {
+    console.error("Firebase initialization failed dynamically:", err);
+  }
+}
+
+// Fallbacks if not configured
+export const auth = authInstance || ({
+  currentUser: null,
+  signOut: async () => {},
+  onAuthStateChanged: () => () => {},
+} as any);
+
+export const db = dbInstance || ({} as any);
 
 // Setup Google Auth Provider with Workspace Scopes
 export const provider = new GoogleAuthProvider();
@@ -65,6 +91,13 @@ export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  if (!isFirebaseConfigured) {
+    setTimeout(() => {
+      if (onAuthFailure) onAuthFailure();
+    }, 50);
+    return () => {};
+  }
+
   // Check for redirect result when the app/listener initializes
   getRedirectResult(auth)
     .then((result) => {
@@ -105,6 +138,10 @@ export const initAuth = (
 
 // Google sign-in flow
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+  }
+
   try {
     isSigningIn = true;
     
@@ -142,19 +179,27 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 
 // Logout flow
 export const logout = async () => {
-  await auth.signOut();
+  if (isFirebaseConfigured) {
+    await auth.signOut();
+  }
   cachedAccessToken = null;
   localStorage.removeItem('tcm_google_access_token');
 };
 
 // Email password sign in
 export const signInWithEmail = async (email: string, pass: string): Promise<User> => {
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+  }
   const credential = await signInWithEmailAndPassword(auth, email, pass);
   return credential.user;
 };
 
 // Email password sign up
 export const signUpWithEmail = async (email: string, pass: string): Promise<User> => {
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+  }
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
   return credential.user;
 };

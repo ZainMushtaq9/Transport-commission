@@ -27,11 +27,12 @@ import {
   PieChart, 
   Pie 
 } from 'recharts';
-import { Booking, Expense, Driver, Factory, Vehicle } from '../types';
+import { Booking, Expense, Driver, Factory, Vehicle, Commission } from '../types';
 
 interface DashboardTabProps {
   bookings: Booking[];
   expenses: Expense[];
+  commissions: Commission[];
   drivers: Driver[];
   vehicles: Vehicle[];
   factories: Factory[];
@@ -42,6 +43,7 @@ interface DashboardTabProps {
 export default function DashboardTab({
   bookings,
   expenses,
+  commissions = [],
   drivers,
   vehicles,
   factories,
@@ -105,6 +107,18 @@ export default function DashboardTab({
     });
   }, [expenses, dateRange, todayStr, startOfWeekDate, startOfMonthDate, startOfYearDate]);
 
+  // Filter commissions based on range
+  const filteredCommissions = useMemo(() => {
+    return commissions.filter(c => {
+      if (dateRange === 'all') return true;
+      if (dateRange === 'today') return c.date === todayStr;
+      if (dateRange === 'week') return c.date >= startOfWeekDate;
+      if (dateRange === 'month') return c.date >= startOfMonthDate;
+      if (dateRange === 'year') return c.date >= startOfYearDate;
+      return true;
+    });
+  }, [commissions, dateRange, todayStr, startOfWeekDate, startOfMonthDate, startOfYearDate]);
+
   // Core Metrics
   const metrics = useMemo(() => {
     let totalFare = 0;
@@ -119,14 +133,22 @@ export default function DashboardTab({
       totalExpense += e.amount;
     });
 
+    let remainingCommission = 0;
+    filteredCommissions.forEach(c => {
+      if (c.paymentStatus === 'Unpaid') {
+        remainingCommission += c.commission;
+      }
+    });
+
     return {
       fare: totalFare,
       commission: totalCommission,
       expense: totalExpense,
       netProfit: totalCommission - totalExpense,
+      remainingCommission,
       tripsCount: filteredBookings.length
     };
-  }, [filteredBookings, filteredExpenses]);
+  }, [filteredBookings, filteredExpenses, filteredCommissions]);
 
   // Factory-wise Commission calculations
   const factoryCommissionData = useMemo(() => {
@@ -233,10 +255,21 @@ export default function DashboardTab({
           <p className="text-2xl font-bold text-slate-800 mt-1">Rs. {metrics.expense.toLocaleString()}</p>
           <button 
             onClick={() => setShowAddExpense(!showAddExpense)}
-            className="mt-2 text-xs text-blue-600 font-semibold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-all"
+            className="mt-2 text-xs text-blue-600 font-semibold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-all w-fit"
           >
             <Plus size={14} /> Record Expense
           </button>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4 rounded-2xl text-white shadow-md relative overflow-hidden col-span-2">
+          <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
+            <DollarSign size={100} />
+          </div>
+          <p className="text-xs text-amber-100 font-medium">Remaining Commission</p>
+          <p className="text-2xl font-bold mt-1">Rs. {metrics.remainingCommission.toLocaleString()}</p>
+          <p className="mt-2 text-[10px] text-amber-100 font-semibold tracking-tight">
+            Pending / Unpaid receivables to collect from factories
+          </p>
         </div>
       </div>
 

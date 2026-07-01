@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail } from '../firebase';
+import { signInWithEmail, signUpWithEmail, googleSignIn } from '../firebase';
 import { User } from 'firebase/auth';
 
 interface AuthScreenProps {
@@ -49,6 +49,22 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         errMsg = "Please enter a valid email address.";
       }
       setError(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        onAuthSuccess(result.user, result.accessToken);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Google Sign-In failed. Please try again or use your Email/Password.");
     } finally {
       setLoading(false);
     }
@@ -163,6 +179,45 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               )}
             </button>
           </form>
+
+          {/* Social Divider and Google OAuth login */}
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800"></div>
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-slate-900 px-2 text-slate-500 font-bold tracking-wider">Or continue with</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-2.5 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 shadow-md active:scale-[0.98]"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.3 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.08 3.58-5.14 3.58-8.73z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.86-3c-1.08.72-2.45 1.16-4.1 1.16-3.15 0-5.82-2.13-6.77-5H1.21v3.1c1.98 3.93 6.04 6.65 10.79 6.65z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.23 14.25c-.24-.72-.38-1.49-.38-2.25s.14-1.53.38-2.25V6.65H1.21C.44 8.19 0 9.93 0 12s.44 3.81 1.21 5.35l4.02-3.1z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.96 1.19 15.24 0 12 0 7.25 0 3.19 2.72 1.21 6.65L5.23 9.75c.95-2.87 3.62-5 6.77-5z"
+                />
+              </svg>
+              <span>Sign In with Google</span>
+            </button>
+          </div>
 
           {/* View Toggle */}
           <div className="text-center pt-2">

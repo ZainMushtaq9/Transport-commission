@@ -27,6 +27,19 @@
   }
 }
 
+@keyframes fadeBackdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeBackdrop {
+  animation: fadeBackdrop 0.2s ease-out forwards;
 }

@@ -344,7 +344,7 @@ export default function DriversTab({
 
       {/* Driver Complete Profile Detail Dialog Modal */}
       {selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeBackdrop">
           <div className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800">Driver Professional Profile</h3>
@@ -480,9 +480,9 @@ export default function DriversTab({
 
       {/* Add Vehicle Sub-Modal inside Driver Profile Details */}
       {showAddVehicle && selectedDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <form onSubmit={handleAddVehicleSubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <form onSubmit={handleAddVehicleSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">
                 {editingVehicle ? `Edit Vehicle for ${selectedDriver.fullName}` : `Add Vehicle for ${selectedDriver.fullName}`}
               </h3>
@@ -495,131 +495,140 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reg. Number (Unique)</label>
-                <input
-                  type="text"
-                  value={regNum}
-                  onChange={(e) => setRegNum(e.target.value)}
-                  placeholder="e.g. MNV-4322"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vehicle Type</label>
-                <select
-                  value={vehicleType}
-                  onChange={(e) => setVehicleType(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                >
-                  <option value="6 Wheeler">6 Wheeler</option>
-                  <option value="10 Wheeler">10 Wheeler</option>
-                  <option value="Mazda Truck">Mazda Truck</option>
-                  <option value="Flatbed Container">Flatbed Container</option>
-                  <option value="Heavy Dumper">Heavy Dumper</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Capacity (Tons)</label>
-                <input
-                  type="number"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  placeholder="e.g. 15"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Model Year</label>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. 2018"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Color</label>
-                <input
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="e.g. Red"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Token Expiry</label>
-                <input
-                  type="date"
-                  value={tokenExp}
-                  onChange={(e) => setTokenExp(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Insurance Info</label>
-                <input
-                  type="text"
-                  value={insurance}
-                  onChange={(e) => setInsurance(e.target.value)}
-                  placeholder="Policy / Company"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Document Attachments inside Vehicle */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Registration Book Image</label>
-              <div className="mt-1 flex items-center gap-3">
-                <label className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-600">
-                  <Camera size={14} className="text-blue-500" />
-                  Select Document File
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reg. Number (Unique)</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, setRegBookImg)}
-                    className="hidden"
+                    type="text"
+                    value={regNum}
+                    onChange={(e) => setRegNum(e.target.value)}
+                    placeholder="e.g. MNV-4322"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
                   />
-                </label>
-                {regBookImg && <span className="text-[10px] font-bold text-emerald-600">✓ Image Loaded</span>}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vehicle Type</label>
+                  <select
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  >
+                    <option value="6 Wheeler">6 Wheeler</option>
+                    <option value="10 Wheeler">10 Wheeler</option>
+                    <option value="Mazda Truck">Mazda Truck</option>
+                    <option value="Flatbed Container">Flatbed Container</option>
+                    <option value="Heavy Dumper">Heavy Dumper</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Capacity (Tons)</label>
+                  <input
+                    type="number"
+                    value={capacity}
+                    onChange={(e) => setCapacity(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Model Year</label>
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. 2018"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Color</label>
+                  <input
+                    type="text"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    placeholder="e.g. Red"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Token Expiry</label>
+                  <input
+                    type="date"
+                    value={tokenExp}
+                    onChange={(e) => setTokenExp(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Insurance Info</label>
+                  <input
+                    type="text"
+                    value={insurance}
+                    onChange={(e) => setInsurance(e.target.value)}
+                    placeholder="Policy / Company"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Document Attachments inside Vehicle */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Registration Book Image</label>
+                <div className="mt-1 flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-600">
+                    <Camera size={14} className="text-blue-500" />
+                    Select Document File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, setRegBookImg)}
+                      className="hidden"
+                    />
+                  </label>
+                  {regBookImg && <span className="text-[10px] font-bold text-emerald-600">✓ Image Loaded</span>}
+                </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
-            >
-              {editingVehicle ? 'Update Vehicle Details' : 'Link Vehicle to Profile'}
-            </button>
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={handleCloseVehicleModal}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                {editingVehicle ? 'Update Vehicle Details' : 'Link Vehicle to Profile'}
+              </button>
+            </div>
           </form>
         </div>
-      )}
-
-      {/* Add Driver Full Modal Dialog */}
+      )}      {/* Add Driver Full Modal Dialog */}
       {showAddDriver && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-3 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">
                 {editingDriver ? 'Edit Driver Profile' : 'Register Driver Profile'}
               </h3>
@@ -632,137 +641,148 @@ export default function DriversTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Zain Mushtaq"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Father Name</label>
-                <input
-                  type="text"
-                  value={fatherName}
-                  onChange={(e) => setFatherName(e.target.value)}
-                  placeholder="Father Name"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="e.g. 0300..."
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">WhatsApp No.</label>
-                <input
-                  type="tel"
-                  value={whatsAppNumber}
-                  onChange={(e) => setWhatsAppNumber(e.target.value)}
-                  placeholder="WhatsApp No."
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CNIC No. (Unique)</label>
-                <input
-                  type="text"
-                  value={cnicNumber}
-                  onChange={(e) => setCnicNumber(e.target.value)}
-                  placeholder="35201-..."
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Residential Address</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Complete home address"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Special Profile Remarks</label>
-                <input
-                  type="text"
-                  value={driverNotes}
-                  onChange={(e) => setDriverNotes(e.target.value)}
-                  placeholder="Reliable, night driver, etc."
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Document Attachments - Base64 Upload widgets */}
-            <div className="space-y-2 border-t border-slate-100 pt-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Attached Profile Verification Files</span>
-              
-              <div className="grid grid-cols-3 gap-2">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">Driver Photo</span>
-                  <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
-                    <Camera size={14} className="text-slate-400" />
-                    <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
-                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setDriverPhoto)} className="hidden" />
-                  </label>
-                  {driverPhoto && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Zain Mushtaq"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">CNIC Front</span>
-                  <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
-                    <Camera size={14} className="text-slate-400" />
-                    <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
-                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setCnicFront)} className="hidden" />
-                  </label>
-                  {cnicFront && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Father Name</label>
+                  <input
+                    type="text"
+                    value={fatherName}
+                    onChange={(e) => setFatherName(e.target.value)}
+                    placeholder="Father Name"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="e.g. 0300..."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">CNIC Back</span>
-                  <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
-                    <Camera size={14} className="text-slate-400" />
-                    <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
-                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setCnicBack)} className="hidden" />
-                  </label>
-                  {cnicBack && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">WhatsApp No.</label>
+                  <input
+                    type="tel"
+                    value={whatsAppNumber}
+                    onChange={(e) => setWhatsAppNumber(e.target.value)}
+                    placeholder="WhatsApp No."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CNIC No. (Unique)</label>
+                  <input
+                    type="text"
+                    value={cnicNumber}
+                    onChange={(e) => setCnicNumber(e.target.value)}
+                    placeholder="35201-..."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Residential Address</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Complete home address"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Special Profile Remarks</label>
+                  <input
+                    type="text"
+                    value={driverNotes}
+                    onChange={(e) => setDriverNotes(e.target.value)}
+                    placeholder="Reliable, night driver, etc."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Document Attachments - Base64 Upload widgets */}
+              <div className="space-y-2 border-t border-slate-100 pt-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Attached Profile Verification Files</span>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">Driver Photo</span>
+                    <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                      <Camera size={14} className="text-slate-400" />
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setDriverPhoto)} className="hidden" />
+                    </label>
+                    {driverPhoto && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">CNIC Front</span>
+                    <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                      <Camera size={14} className="text-slate-400" />
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setCnicFront)} className="hidden" />
+                    </label>
+                    {cnicFront && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  </div>
+
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">CNIC Back</span>
+                    <label className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                      <Camera size={14} className="text-slate-400" />
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">Upload</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setCnicBack)} className="hidden" />
+                    </label>
+                    {cnicBack && <span className="text-[8px] font-bold text-emerald-600 block text-center mt-1">✓ Loaded</span>}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all mt-2"
-            >
-              {editingDriver ? 'Update Driver Profile' : 'Verify & Register Driver'}
-            </button>
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={handleCloseDriverModal}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                {editingDriver ? 'Update Profile' : 'Verify & Register'}
+              </button>
+            </div>
           </form>
         </div>
       )}

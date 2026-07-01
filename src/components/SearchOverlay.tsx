@@ -119,8 +119,8 @@ export default function SearchOverlay({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/90 z-50 overflow-y-auto p-4 sm:p-6 animate-fadeIn">
-      <div className="max-w-2xl mx-auto space-y-4">
+    <div className="fixed inset-0 bg-slate-900/90 z-50 overflow-y-auto p-4 sm:p-6 animate-fadeBackdrop">
+      <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
         {/* Search header bar */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>

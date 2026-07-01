@@ -1,9 +1,9 @@
 {
-  "projectId": "your-project-id",
-  "appId": "your-app-id",
-  "apiKey": "your-api-key",
-  "authDomain": "your-project-id.firebaseapp.com",
-  "storageBucket": "your-project-id.firebasestorage.app",
-  "messagingSenderId": "your-messaging-sender-id",
-  "measurementId": "your-measurement-id"
+  "projectId": "kashif-603d3",
+  "appId": "1:268103459731:web:676198581b5661e861fe66",
+  "apiKey": "AIzaSyC-Sa0eB__nVrWY5ITqAd83pR577uygjzs",
+  "authDomain": "kashif-603d3.firebaseapp.com",
+  "storageBucket": "kashif-603d3.firebasestorage.app",
+  "messagingSenderId": "268103459731",
+  "measurementId": "G-P9WDQH3ZHS"
 }

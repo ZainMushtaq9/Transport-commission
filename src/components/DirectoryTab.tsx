@@ -283,9 +283,9 @@ export default function DirectoryTab({
 
       {/* Add Factory Dialog modal */}
       {showAddFactory && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Add Sourcing Factory</h3>
               <button
                 type="button"
@@ -296,84 +296,95 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Factory Name</label>
-                <input
-                  type="text"
-                  value={factoryName}
-                  onChange={(e) => setFactoryName(e.target.value)}
-                  placeholder="e.g. Chenab Mills"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Factory Name</label>
+                  <input
+                    type="text"
+                    value={factoryName}
+                    onChange={(e) => setFactoryName(e.target.value)}
+                    placeholder="e.g. Chenab Mills"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Manager Name</label>
+                  <input
+                    type="text"
+                    value={managerName}
+                    onChange={(e) => setManagerName(e.target.value)}
+                    placeholder="e.g. Farhan Ali"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={factoryPhone}
+                    onChange={(e) => setFactoryPhone(e.target.value)}
+                    placeholder="e.g. 0321-..."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Complete Address</label>
+                  <input
+                    type="text"
+                    value={factoryAddress}
+                    onChange={(e) => setFactoryAddress(e.target.value)}
+                    placeholder="Faisalabad, Pakistan"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Manager Name</label>
-                <input
-                  type="text"
-                  value={managerName}
-                  onChange={(e) => setManagerName(e.target.value)}
-                  placeholder="e.g. Farhan Ali"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
-                <input
-                  type="tel"
-                  value={factoryPhone}
-                  onChange={(e) => setFactoryPhone(e.target.value)}
-                  placeholder="e.g. 0321-..."
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Notes / Contract Details</label>
+                <textarea
+                  value={factoryNotes}
+                  onChange={(e) => setFactoryNotes(e.target.value)}
+                  placeholder="Preferential commission rate is 5%..."
+                  rows={2}
                   className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Complete Address</label>
-                <input
-                  type="text"
-                  value={factoryAddress}
-                  onChange={(e) => setFactoryAddress(e.target.value)}
-                  placeholder="Faisalabad, Pakistan"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
                 />
               </div>
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Notes / Contract Details</label>
-              <textarea
-                value={factoryNotes}
-                onChange={(e) => setFactoryNotes(e.target.value)}
-                placeholder="Preferential commission rate is 5%..."
-                rows={2}
-                className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-              />
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddFactory(false)}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Save Factory Profile
+              </button>
             </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
-            >
-              Save Factory Profile
-            </button>
           </form>
         </div>
       )}
 
       {/* Add Customer Dialog modal */}
       {showAddCustomer && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Add Destination Customer Warehouse</h3>
               <button
                 type="button"
@@ -384,87 +395,98 @@ export default function DirectoryTab({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Warehouse Name</label>
-                <input
-                  type="text"
-                  value={warehouseName}
-                  onChange={(e) => setWarehouseName(e.target.value)}
-                  placeholder="e.g. Terminal A-3"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Warehouse Name</label>
+                  <input
+                    type="text"
+                    value={warehouseName}
+                    onChange={(e) => setWarehouseName(e.target.value)}
+                    placeholder="e.g. Terminal A-3"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Company / Brand</label>
+                  <input
+                    type="text"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="e.g. Metro Group"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone</label>
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="0312-..."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">City</label>
+                  <input
+                    type="text"
+                    value={customerCity}
+                    onChange={(e) => setCustomerCity(e.target.value)}
+                    placeholder="e.g. Lahore"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</label>
+                  <input
+                    type="text"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder="Raiwind Road"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Company / Brand</label>
-                <input
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="e.g. Metro Group"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Notes / Receiving Hours</label>
+                <textarea
+                  value={customerNotes}
+                  onChange={(e) => setCustomerNotes(e.target.value)}
+                  placeholder="Receiving open 9 AM to 5 PM only..."
+                  rows={2}
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone</label>
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="0312-..."
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">City</label>
-                <input
-                  type="text"
-                  value={customerCity}
-                  onChange={(e) => setCustomerCity(e.target.value)}
-                  placeholder="e.g. Lahore"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</label>
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={(e) => setCustomerAddress(e.target.value)}
-                  placeholder="Raiwind Road"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-                  required
-                />
-              </div>
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddCustomer(false)}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Save Customer Profile
+              </button>
             </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Notes / Receiving Hours</label>
-              <textarea
-                value={customerNotes}
-                onChange={(e) => setCustomerNotes(e.target.value)}
-                placeholder="Receiving open 9 AM to 5 PM only..."
-                rows={2}
-                className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
-            >
-              Save Customer Profile
-            </button>
           </form>
         </div>
       )}

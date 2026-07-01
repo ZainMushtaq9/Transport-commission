@@ -311,9 +311,9 @@ export default function BookingsTab({
 
       {/* Booking Details Dialog Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <div className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <div className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Booking Verification & Actions</h3>
               <button
                 onClick={() => {
@@ -326,87 +326,101 @@ export default function BookingsTab({
               </button>
             </div>
 
-            {/* Core Info Summary Card */}
-            <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
-              <p className="text-xs text-slate-400 font-semibold">Booking ID: {selectedBooking.id}</p>
-              <h4 className="text-sm font-bold text-slate-800">
-                {selectedBooking.product} · {selectedBooking.weight} Tons
-              </h4>
-              <p className="text-xs font-semibold text-slate-500">
-                Fare: <span className="font-bold text-slate-700">Rs. {selectedBooking.fare.toLocaleString()}</span> |
-                Commission: <span className="font-bold text-blue-600">Rs. {selectedBooking.commission.toLocaleString()}</span>
-              </p>
-              <div className="pt-2 text-xs border-t border-slate-200 mt-2">
-                <span className="text-[10px] font-bold text-slate-400">Notes / Instructions:</span>
-                <p className="text-slate-600 italic mt-0.5">{selectedBooking.notes || 'No remarks recorded.'}</p>
-              </div>
-            </div>
-
-            {/* Quick Status Update buttons */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Update Trip Status</span>
-              <div className="grid grid-cols-4 gap-2">
-                {(['Pending', 'In Transit', 'Delivered', 'Cancelled'] as Booking['status'][]).map(st => (
-                  <button
-                    key={st}
-                    onClick={() => {
-                      onUpdateBookingStatus(selectedBooking.id, st);
-                      setSelectedBooking({ ...selectedBooking, status: st });
-                    }}
-                    className={`py-2 text-[10px] font-bold rounded-xl border transition-all ${
-                      selectedBooking.status === st
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-100 hover:bg-slate-50'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Integrations Module */}
-            <div className="border-t border-slate-100 pt-3 space-y-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Workspace Smart Triggers</span>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onTriggerCalendar(selectedBooking)}
-                  disabled={!accessToken}
-                  className="flex-1 py-2 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <CalendarPlus size={14} className="text-red-500" />
-                  Add to Calendar
-                </button>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Core Info Summary Card */}
+              <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+                <p className="text-xs text-slate-400 font-semibold">Booking ID: {selectedBooking.id}</p>
+                <h4 className="text-sm font-bold text-slate-800">
+                  {selectedBooking.product} · {selectedBooking.weight} Tons
+                </h4>
+                <p className="text-xs font-semibold text-slate-500">
+                  Fare: <span className="font-bold text-slate-700">Rs. {selectedBooking.fare.toLocaleString()}</span> |
+                  Commission: <span className="font-bold text-blue-600">Rs. {selectedBooking.commission.toLocaleString()}</span>
+                </p>
+                <div className="pt-2 text-xs border-t border-slate-200 mt-2">
+                  <span className="text-[10px] font-bold text-slate-400">Notes / Instructions:</span>
+                  <p className="text-slate-600 italic mt-0.5">{selectedBooking.notes || 'No remarks recorded.'}</p>
+                </div>
               </div>
 
-              {/* Gmail dispatch form */}
-              <div className="bg-slate-50 p-3 rounded-2xl space-y-2">
-                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                  <Mail size={12} className="text-blue-500" /> Dispatch Booking Info via Gmail
-                </span>
+              {/* Quick Status Update buttons */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Update Trip Status</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['Pending', 'In Transit', 'Delivered', 'Cancelled'] as Booking['status'][]).map(st => (
+                    <button
+                      key={st}
+                      onClick={() => {
+                        onUpdateBookingStatus(selectedBooking.id, st);
+                        setSelectedBooking({ ...selectedBooking, status: st });
+                      }}
+                      className={`py-2 text-[10px] font-bold rounded-xl border transition-all ${
+                        selectedBooking.status === st
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-slate-600 border-slate-100 hover:bg-slate-50'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Integrations Module */}
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Workspace Smart Triggers</span>
+
                 <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={sendToEmail}
-                    onChange={(e) => setSendToEmail(e.target.value)}
-                    placeholder="manager@factory.com"
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-hidden"
-                  />
                   <button
-                    onClick={() => triggerGmailSend(selectedBooking)}
-                    disabled={!accessToken || !sendToEmail}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                    onClick={() => onTriggerCalendar(selectedBooking)}
+                    disabled={!accessToken}
+                    className="flex-1 py-2 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    {emailStatus === 'sending' ? 'Sending...' : emailStatus === 'success' ? 'Sent!' : 'Send'}
+                    <CalendarPlus size={14} className="text-red-500" />
+                    Add to Calendar
                   </button>
                 </div>
-                {!accessToken && (
-                  <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 mt-1">
-                    <AlertCircle size={10} /> Google Login required to send Gmail
-                  </p>
-                )}
+
+                {/* Gmail dispatch form */}
+                <div className="bg-slate-50 p-3 rounded-2xl space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                    <Mail size={12} className="text-blue-500" /> Dispatch Booking Info via Gmail
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={sendToEmail}
+                      onChange={(e) => setSendToEmail(e.target.value)}
+                      placeholder="manager@factory.com"
+                      className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-hidden"
+                    />
+                    <button
+                      onClick={() => triggerGmailSend(selectedBooking)}
+                      disabled={!accessToken || !sendToEmail}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      {emailStatus === 'sending' ? 'Sending...' : emailStatus === 'success' ? 'Sent!' : 'Send'}
+                    </button>
+                  </div>
+                  {!accessToken && (
+                    <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 mt-1">
+                      <AlertCircle size={10} /> Google Login required to send Gmail
+                    </p>
+                  )}
+                </div>
               </div>
+            </div>
+
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                onClick={() => {
+                  setSelectedBooking(null);
+                  setEmailStatus('idle');
+                }}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -414,9 +428,9 @@ export default function BookingsTab({
 
       {/* Add Booking Modal Dialog */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto flex justify-center items-start p-4 sm:p-6 md:p-10 animate-fadeIn">
-          <form onSubmit={handleSubmit} className="relative bg-white rounded-3xl w-full max-w-lg p-5 space-y-4 my-4 sm:my-8 shadow-2xl shrink-0 animate-fadeIn">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-fadeBackdrop">
+          <form onSubmit={handleSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+            <div className="flex justify-between items-center border-b border-slate-100 p-5 shrink-0">
               <h3 className="text-sm font-bold text-slate-800">Dispatch New Transport Order</h3>
               <button
                 type="button"
@@ -427,156 +441,167 @@ export default function BookingsTab({
               </button>
             </div>
 
-            {/* Select Connected Driver */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected Driver</label>
-                <select
-                  value={driverId}
-                  onChange={(e) => handleDriverChange(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                >
-                  <option value="">Select Driver</option>
-                  {drivers.map(d => (
-                    <option key={d.id} value={d.id}>{d.fullName}</option>
-                  ))}
-                </select>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Select Connected Driver */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected Driver</label>
+                  <select
+                    value={driverId}
+                    onChange={(e) => handleDriverChange(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  >
+                    <option value="">Select Driver</option>
+                    {drivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Select Connected Vehicle */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected Vehicle</label>
+                  <select
+                    value={vehicleId}
+                    onChange={(e) => setVehicleId(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  >
+                    <option value="">Select Vehicle</option>
+                    {availableVehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.registrationNumber} ({v.vehicleType})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* Select Connected Vehicle */}
+              {/* Select Connected Factory & Customer warehouse */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sourcing Factory</label>
+                  <select
+                    value={factoryId}
+                    onChange={(e) => setFactoryId(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  >
+                    <option value="">Select Factory</option>
+                    {factories.map(f => (
+                      <option key={f.id} value={f.id}>{f.factoryName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Destination Customer</label>
+                  <select
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  >
+                    <option value="">Select Warehouse</option>
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}>{c.warehouseName} ({c.company})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Booking Date & Product details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Booking Date</label>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Product / Goods</label>
+                  <input
+                    type="text"
+                    value={product}
+                    onChange={(e) => setProduct(e.target.value)}
+                    placeholder="e.g. Wheat Bags, Sugar"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Financial Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Weight (Tons)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="Weight"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Fare (Rs.)</label>
+                  <input
+                    type="number"
+                    value={fare}
+                    onChange={(e) => setFare(e.target.value)}
+                    placeholder="Fare"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Commission (Rs.)</label>
+                  <input
+                    type="number"
+                    value={commission}
+                    onChange={(e) => setCommission(e.target.value)}
+                    placeholder="Commission"
+                    className="w-full mt-1 p-2 border border-blue-100 rounded-xl text-xs bg-blue-50/50 text-blue-600 font-bold focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Connected Vehicle</label>
-                <select
-                  value={vehicleId}
-                  onChange={(e) => setVehicleId(e.target.value)}
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Special Notes</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Remarks about loading/unloading..."
+                  rows={2}
                   className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                >
-                  <option value="">Select Vehicle</option>
-                  {availableVehicles.map(v => (
-                    <option key={v.id} value={v.id}>{v.registrationNumber} ({v.vehicleType})</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
-            {/* Select Connected Factory & Customer warehouse */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sourcing Factory</label>
-                <select
-                  value={factoryId}
-                  onChange={(e) => setFactoryId(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                >
-                  <option value="">Select Factory</option>
-                  {factories.map(f => (
-                    <option key={f.id} value={f.id}>{f.factoryName}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Destination Customer</label>
-                <select
-                  value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                >
-                  <option value="">Select Warehouse</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.warehouseName} ({c.company})</option>
-                  ))}
-                </select>
-              </div>
+            <div className="border-t border-slate-100 p-5 bg-slate-50 shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Confirm and Dispatch Order
+              </button>
             </div>
-
-            {/* Booking Date & Product details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Booking Date</label>
-                <input
-                  type="date"
-                  value={bookingDate}
-                  onChange={(e) => setBookingDate(e.target.value)}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Product / Goods</label>
-                <input
-                  type="text"
-                  value={product}
-                  onChange={(e) => setProduct(e.target.value)}
-                  placeholder="e.g. Wheat Bags, Sugar"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Financial Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Weight (Tons)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="Weight"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Fare (Rs.)</label>
-                <input
-                  type="number"
-                  value={fare}
-                  onChange={(e) => setFare(e.target.value)}
-                  placeholder="Fare"
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Commission (Rs.)</label>
-                <input
-                  type="number"
-                  value={commission}
-                  onChange={(e) => setCommission(e.target.value)}
-                  placeholder="Commission"
-                  className="w-full mt-1 p-2 border border-blue-100 rounded-xl text-xs bg-blue-50/50 text-blue-600 font-bold focus:border-blue-500 focus:outline-hidden"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Special Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Remarks about loading/unloading..."
-                rows={2}
-                className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
-            >
-              Confirm and Dispatch Order
-            </button>
           </form>
         </div>
       )}

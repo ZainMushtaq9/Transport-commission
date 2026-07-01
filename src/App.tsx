@@ -57,7 +57,8 @@ import {
   initAuth, 
   googleSignIn, 
   logout, 
-  setAccessToken 
+  setAccessToken,
+  isFirebaseConfigured
 } from './firebase';
 import { 
   setupFolderStructure, 
@@ -87,6 +88,7 @@ export default function App() {
   
   // Auth and Token states
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -208,15 +210,23 @@ export default function App() {
 
   // --- 2. FIRESTORE REAL-TIME SYNC ENGINE ---
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setIsAuthLoading(false);
+      setIsSandboxMode(true);
+      return;
+    }
+
     // Listen to Firebase Auth state
     const unsubAuth = initAuth(
       (currentUser, token) => {
         setUser(currentUser);
         if (token) setAccessTokenState(token);
+        setIsAuthLoading(false);
       },
       () => {
         setUser(null);
         setAccessTokenState(null);
+        setIsAuthLoading(false);
       }
     );
 
@@ -229,64 +239,125 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    // Listeners for collections
-    const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
-      setDrivers(data);
-      saveLocalData('tcm_drivers', data);
-    });
+    let isSubscribed = true;
+    let unsubs: (() => void)[] = [];
 
-    const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-      setVehicles(data);
-      saveLocalData('tcm_vehicles', data);
-    });
+    const initFirestoreSync = async () => {
+      try {
+        // 1. Check if Firestore contains any data for this user
+        const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', user.uid)));
+        const hasFirestoreData = !driversSnap.empty;
 
-    const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
-      setFactories(data);
-      saveLocalData('tcm_factories', data);
-    });
+        // If Firestore is empty, but we have local data, upload local data to Firestore first
+        if (!hasFirestoreData) {
+          const localDrivers = JSON.parse(localStorage.getItem('tcm_drivers') || '[]');
+          const localVehicles = JSON.parse(localStorage.getItem('tcm_vehicles') || '[]');
+          const localFactories = JSON.parse(localStorage.getItem('tcm_factories') || '[]');
+          const localCustomers = JSON.parse(localStorage.getItem('tcm_customers') || '[]');
+          const localBookings = JSON.parse(localStorage.getItem('tcm_bookings') || '[]');
+          const localCommissions = JSON.parse(localStorage.getItem('tcm_commissions') || '[]');
+          const localExpenses = JSON.parse(localStorage.getItem('tcm_expenses') || '[]');
+          const localNotifications = JSON.parse(localStorage.getItem('tcm_notifications') || '[]');
 
-    const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-      setCustomers(data);
-      saveLocalData('tcm_customers', data);
-    });
+          const hasLocalData = localDrivers.length > 0 || 
+                               localVehicles.length > 0 || 
+                               localFactories.length > 0 || 
+                               localCustomers.length > 0 || 
+                               localBookings.length > 0 ||
+                               localCommissions.length > 0 ||
+                               localExpenses.length > 0;
 
-    const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
-      setBookings(data);
-      saveLocalData('tcm_bookings', data);
-    });
+          if (hasLocalData && isSubscribed) {
+            console.log('Firestore is empty but local state has data. Uploading local state to Firestore...');
+            const batchToSync = {
+              drivers: localDrivers,
+              vehicles: localVehicles,
+              factories: localFactories,
+              customers: localCustomers,
+              bookings: localBookings,
+              commissions: localCommissions,
+              expenses: localExpenses,
+              notifications: localNotifications
+            };
 
-    const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
-      setCommissions(data);
-      saveLocalData('tcm_commissions', data);
-    });
+            for (const [colName, list] of Object.entries(batchToSync)) {
+              for (const item of list as any[]) {
+                const docRef = doc(db, colName, item.id);
+                await setDoc(docRef, { ...item, userId: user.uid }, { merge: true });
+              }
+            }
+            console.log('Local state successfully uploaded to Firestore!');
+          }
+        }
+      } catch (err) {
+        console.error('Error checking/uploading local data to Firestore:', err);
+      }
 
-    const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-      setExpenses(data);
-      saveLocalData('tcm_expenses', data);
-    });
+      if (!isSubscribed) return;
 
-    const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
-      setNotifications(data);
-      saveLocalData('tcm_notifications', data);
-    });
+      // 2. Establish onSnapshot listeners
+      const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
+        setDrivers(data);
+        saveLocalData('tcm_drivers', data);
+      });
+      unsubs.push(unsubDrivers);
+
+      const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+        setVehicles(data);
+        saveLocalData('tcm_vehicles', data);
+      });
+      unsubs.push(unsubVehicles);
+
+      const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
+        setFactories(data);
+        saveLocalData('tcm_factories', data);
+      });
+      unsubs.push(unsubFactories);
+
+      const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        setCustomers(data);
+        saveLocalData('tcm_customers', data);
+      });
+      unsubs.push(unsubCustomers);
+
+      const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+        setBookings(data);
+        saveLocalData('tcm_bookings', data);
+      });
+      unsubs.push(unsubBookings);
+
+      const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
+        setCommissions(data);
+        saveLocalData('tcm_commissions', data);
+      });
+      unsubs.push(unsubCommissions);
+
+      const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+        setExpenses(data);
+        saveLocalData('tcm_expenses', data);
+      });
+      unsubs.push(unsubExpenses);
+
+      const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
+        setNotifications(data);
+        saveLocalData('tcm_notifications', data);
+      });
+      unsubs.push(unsubNotifications);
+    };
+
+    initFirestoreSync();
 
     return () => {
-      unsubDrivers();
-      unsubVehicles();
-      unsubFactories();
-      unsubCustomers();
-      unsubBookings();
-      unsubCommissions();
-      unsubExpenses();
-      unsubNotifications();
+      isSubscribed = false;
+      unsubs.forEach(unsub => unsub());
     };
   }, [user]);
 
@@ -524,6 +595,42 @@ export default function App() {
     }
   };
 
+  // Background Google Drive Auto Backup trigger
+  const triggerAutoDriveBackup = async (
+    currentDrivers = drivers,
+    currentVehicles = vehicles,
+    currentFactories = factories,
+    currentCustomers = customers,
+    currentBookings = bookings,
+    currentCommissions = commissions,
+    currentExpenses = expenses
+  ) => {
+    if (!accessToken) return;
+    try {
+      const folders = await setupFolderStructure(accessToken);
+      const payload = {
+        drivers: currentDrivers,
+        vehicles: currentVehicles,
+        factories: currentFactories,
+        customers: currentCustomers,
+        bookings: currentBookings,
+        commissions: currentCommissions,
+        expenses: currentExpenses,
+        backupDate: new Date().toISOString()
+      };
+      await backupDataToDrive(accessToken, folders.backupsFolderId, payload);
+      const lastBackupStr = new Date().toLocaleString();
+      localStorage.setItem('tcm_last_backup', lastBackupStr);
+      setBackupMetadata({
+        status: 'success',
+        lastBackupDate: lastBackupStr,
+        message: 'Auto backup synchronized to Google Drive'
+      });
+    } catch (err) {
+      console.warn('Background auto Drive backup failed:', err);
+    }
+  };
+
   // --- 4. CORE DATABASE ACTION TRIGGERS ---
   const addNotification = async (title: string, message: string) => {
     const notif: NotificationRef = {
@@ -565,6 +672,7 @@ export default function App() {
     }
 
     addNotification('Driver Added', `Successfully registered profile for ${newDriver.fullName}.`);
+    triggerAutoDriveBackup(updated);
   };
 
   const handleAddVehicle = async (vehicleInput: Omit<Vehicle, 'id' | 'createdAt'>) => {
@@ -584,6 +692,7 @@ export default function App() {
     }
 
     addNotification('Vehicle Registered', `Linked ${newVehicle.registrationNumber} (${newVehicle.vehicleType}) successfully.`);
+    triggerAutoDriveBackup(drivers, updated);
   };
 
   const handleUpdateDriver = async (id: string, driverInput: Partial<Omit<Driver, 'id' | 'createdAt'>>) => {
@@ -599,6 +708,7 @@ export default function App() {
     }
 
     addNotification('Driver Updated', `Updated profile details for driver.`);
+    triggerAutoDriveBackup(updated);
   };
 
   const handleUpdateVehicle = async (id: string, vehicleInput: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => {
@@ -614,6 +724,7 @@ export default function App() {
     }
 
     addNotification('Vehicle Updated', `Updated details for ${vehicleInput.registrationNumber || 'Vehicle'}.`);
+    triggerAutoDriveBackup(drivers, updated);
   };
 
   const handleAddFactory = async (factoryInput: Omit<Factory, 'id' | 'createdAt'>) => {
@@ -633,6 +744,7 @@ export default function App() {
     }
 
     addNotification('Factory Indexed', `Added sourcing partner: ${newFactory.factoryName}.`);
+    triggerAutoDriveBackup(drivers, vehicles, updated);
   };
 
   const handleAddCustomer = async (customerInput: Omit<Customer, 'id' | 'createdAt'>) => {
@@ -652,6 +764,7 @@ export default function App() {
     }
 
     addNotification('Warehouse Added', `Added warehouse location: ${newCustomer.warehouseName}.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, updated);
   };
 
   const handleAddBooking = async (bookingInput: Omit<Booking, 'id' | 'createdAt'>) => {
@@ -678,11 +791,14 @@ export default function App() {
       userId: user?.uid
     };
 
-    setBookings(prev => [...prev, newBooking]);
-    setCommissions(prev => [...prev, newCommission]);
+    const updatedBookings = [...bookings, newBooking];
+    const updatedCommissions = [...commissions, newCommission];
 
-    saveLocalData('tcm_bookings', [...bookings, newBooking]);
-    saveLocalData('tcm_commissions', [...commissions, newCommission]);
+    setBookings(updatedBookings);
+    setCommissions(updatedCommissions);
+
+    saveLocalData('tcm_bookings', updatedBookings);
+    saveLocalData('tcm_commissions', updatedCommissions);
 
     if (user) {
       await setDoc(doc(db, 'bookings', newBooking.id), newBooking);
@@ -690,6 +806,7 @@ export default function App() {
     }
 
     addNotification('Order Dispatched', `Booking dispatched: ${newBooking.product} (Rs. ${newBooking.commission} Comm).`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, updatedBookings, updatedCommissions);
 
     // Smart Trigger: Google Calendar Addition automatically if connected
     if (accessToken) {
@@ -719,6 +836,7 @@ export default function App() {
     }
 
     addNotification('Trip Status Updated', `Booking status changed to "${status}".`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, updated);
   };
 
   const handleToggleCommissionStatus = async (bookingId: string, currentStatus: 'Paid' | 'Unpaid') => {
@@ -738,6 +856,7 @@ export default function App() {
     }
 
     addNotification('Ledger Updated', `Commission marked as ${newStatus === 'Paid' ? 'Cleared' : 'Unpaid'}.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, bookings, updatedComms);
   };
 
   const handleAddExpense = async (expenseInput: Omit<Expense, 'id' | 'createdAt'>) => {
@@ -757,6 +876,7 @@ export default function App() {
     }
 
     addNotification('Expense Recorded', `Logged Rs. ${newExpense.amount} for ${newExpense.category}.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, bookings, commissions, updated);
   };
 
   const handleDeleteExpense = async (id: string) => {
@@ -769,6 +889,7 @@ export default function App() {
     }
 
     addNotification('Expense Deleted', 'Removed expense log entry.');
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, bookings, commissions, updated);
   };
 
   // --- 5. WORKSPACE API BACKUPS & EXPORTS ---
@@ -1110,6 +1231,15 @@ export default function App() {
   const [selectedDriverForProfile, setSelectedDriverForProfile] = useState<Driver | null>(null);
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<Booking | null>(null);
 
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-slate-400 font-bold tracking-widest uppercase animate-pulse">Initializing Secure Session...</p>
+      </div>
+    );
+  }
+
   if (!user && !isSandboxMode) {
     return (
       <AuthScreen
@@ -1217,11 +1347,12 @@ export default function App() {
       </header>
 
       {/* 2. DYNAMIC CENTER WORKSPACE PANEL */}
-      <main className="flex-1 px-4 py-4 overflow-y-auto max-w-lg mx-auto w-full">
+      <main className="flex-1 px-4 pt-4 pb-28 overflow-y-auto max-w-lg mx-auto w-full">
         {activeTab === 'dashboard' && (
           <DashboardTab 
             bookings={bookings} 
             expenses={expenses} 
+            commissions={commissions}
             drivers={drivers}
             vehicles={vehicles}
             factories={factories}
@@ -1352,7 +1483,7 @@ export default function App() {
       </div>
 
       {/* 4. BOTTOM PERSISTENT NAVIGATION BAR (NATIVE LOOK & FEEL) */}
-      <nav className="sticky bottom-0 bg-white border-t border-slate-100 py-2.5 z-30 flex items-center justify-around shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-slate-100 py-2.5 z-40 flex items-center justify-around shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center justify-center transition-all ${
