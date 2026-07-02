@@ -133,6 +133,17 @@ export default function App() {
 
   // --- 1. LOCAL DATA FALLBACKS (OFFLINE-FIRST DESIGN) ---
   const loadLocalData = () => {
+    if (!user && !isSandboxMode) {
+      setDrivers([]);
+      setVehicles([]);
+      setFactories([]);
+      setCustomers([]);
+      setBookings([]);
+      setCommissions([]);
+      setExpenses([]);
+      setNotifications([]);
+      return;
+    }
     try {
       setDrivers(JSON.parse(localStorage.getItem('tcm_drivers') || '[]'));
       setVehicles(JSON.parse(localStorage.getItem('tcm_vehicles') || '[]'));
@@ -149,6 +160,28 @@ export default function App() {
 
   const saveLocalData = (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
+  };
+
+  const clearUserDataAndStorage = () => {
+    setDrivers([]);
+    setVehicles([]);
+    setFactories([]);
+    setCustomers([]);
+    setBookings([]);
+    setCommissions([]);
+    setExpenses([]);
+    setNotifications([]);
+
+    localStorage.removeItem('tcm_drivers');
+    localStorage.removeItem('tcm_vehicles');
+    localStorage.removeItem('tcm_factories');
+    localStorage.removeItem('tcm_customers');
+    localStorage.removeItem('tcm_bookings');
+    localStorage.removeItem('tcm_commissions');
+    localStorage.removeItem('tcm_expenses');
+    localStorage.removeItem('tcm_notifications');
+    localStorage.removeItem('tcm_last_backup');
+    setBackupMetadata({ lastBackupDate: '', status: 'idle' });
   };
 
   // Ensure a clean production slate: if demo data was previously seeded, wipe it once.
@@ -168,6 +201,13 @@ export default function App() {
     }
     loadLocalData();
   }, []);
+
+  // Load local data when entering sandbox mode
+  useEffect(() => {
+    if (isSandboxMode) {
+      loadLocalData();
+    }
+  }, [isSandboxMode]);
 
   // Inactivity tracking mechanism to auto logout and lock session
   useEffect(() => {
@@ -198,7 +238,7 @@ export default function App() {
             await logout();
             setUser(null);
             setAccessTokenState(null);
-            loadLocalData();
+            clearUserDataAndStorage();
           } catch (e) {
             console.error('Error on auto session logout:', e);
           }
@@ -240,6 +280,7 @@ export default function App() {
             setAccessTokenState(null);
             setIsSessionLocked(true);
             setIsAuthLoading(false);
+            clearUserDataAndStorage();
             return;
           }
         }
@@ -255,6 +296,9 @@ export default function App() {
         setUser(null);
         setAccessTokenState(null);
         setIsAuthLoading(false);
+        if (!isSandboxMode) {
+          clearUserDataAndStorage();
+        }
       }
     );
 
@@ -265,7 +309,12 @@ export default function App() {
 
   // Sync state into Firestore collections if user is authenticated
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      if (!isSandboxMode) {
+        clearUserDataAndStorage();
+      }
+      return;
+    }
 
     let isSubscribed = true;
     let unsubs: (() => void)[] = [];
@@ -595,7 +644,7 @@ export default function App() {
     setIsSandboxMode(false);
     localStorage.removeItem('tcm_sandbox_active');
     localStorage.removeItem('tcm_last_activity');
-    loadLocalData();
+    clearUserDataAndStorage();
     addNotification('Logged Out', 'Successfully logged out of your session.');
   };
 
@@ -1285,13 +1334,13 @@ export default function App() {
           localStorage.removeItem('tcm_sandbox_active');
           addNotification('Welcome back', `Logged in successfully!`);
         }}
-        onEnterSandboxMode={() => {
+        onEnterOfflineMode={() => {
           localStorage.setItem('tcm_last_activity', Date.now().toString());
           lastActivityRef.current = Date.now();
           setIsSessionLocked(false);
           setIsSandboxMode(true);
           localStorage.setItem('tcm_sandbox_active', 'true');
-          addNotification('Sandbox Activated', 'Running in local storage sandbox mode.');
+          addNotification('Local Storage Active', 'Running in local device storage mode.');
         }}
       />
     );
@@ -1310,7 +1359,7 @@ export default function App() {
             <h1 className="text-sm font-bold text-slate-900 tracking-tight">Transport Manager</h1>
             <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${user ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-              {user ? 'Firestore Sync Active' : 'Local Sandbox Mode'}
+              {user ? 'Cloud Database Mode' : 'Local Storage Mode'}
             </p>
           </div>
         </div>

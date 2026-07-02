@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Mail, Lock, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, googleSignIn } from '../firebase';
+import { signInWithEmail, signUpWithEmail } from '../firebase';
 import { User } from 'firebase/auth';
 
 interface AuthScreenProps {
   onAuthSuccess: (user: User, accessToken: string | null) => void;
-  onEnterSandboxMode: () => void;
+  onEnterOfflineMode: () => void;
 }
 
-export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthScreenProps) {
+export default function AuthScreen({ onAuthSuccess, onEnterOfflineMode }: AuthScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,29 +49,9 @@ export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthSc
       } else if (err.code === "auth/invalid-email") {
         errMsg = "Please enter a valid email address.";
       } else if (err.code === "auth/network-request-failed" || err.message?.includes("network-request-failed")) {
-        errMsg = "Network connection to Firebase Auth failed. If you are using the app inside an iframe preview, cross-site cookies or API endpoints might be blocked. Try running the app in 'Offline Sandbox Mode' below.";
+        errMsg = "Network connection failed. If you are using the app inside an iframe preview, cross-site cookies or API endpoints might be blocked. Try running the app in 'Local Storage Mode' below.";
       }
       setError(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await googleSignIn(false); // false: request standard auth profile scopes only, no workspace scopes!
-      if (result) {
-        onAuthSuccess(result.user, result.accessToken);
-      }
-    } catch (err: any) {
-      console.error(err);
-      let errMsg = err.message || "Google Sign-In failed.";
-      if (errMsg.includes("network-request-failed") || err.code === "auth/network-request-failed") {
-        errMsg = "Network/Cookie error. Please enable cross-site cookies or run in Offline Sandbox Mode.";
-      }
-      setError(errMsg + " Try 'Offline Sandbox Mode' below if you are inside an iframe preview.");
     } finally {
       setLoading(false);
     }
@@ -104,13 +84,13 @@ export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthSc
               <AlertCircle size={16} className="shrink-0 text-red-500" />
               <span>{error}</span>
             </div>
-            {error.includes("Sandbox") && (
+            {error.includes("Local") && (
               <button
                 type="button"
-                onClick={onEnterSandboxMode}
+                onClick={onEnterOfflineMode}
                 className="mt-2 text-left text-xs text-blue-400 hover:text-blue-300 font-bold underline transition-all"
               >
-                Go to Sandbox Mode Now →
+                Go to Local Storage Mode Now →
               </button>
             )}
           </div>
@@ -198,46 +178,7 @@ export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthSc
             </button>
           </form>
 
-          {/* Social Divider and Google OAuth login */}
-          <div className="space-y-4 pt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800"></div>
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase">
-                <span className="bg-slate-900 px-2 text-slate-500 font-bold tracking-wider">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full py-2.5 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2.5 shadow-md active:scale-[0.98]"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.3 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.08 3.58-5.14 3.58-8.73z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.86-3c-1.08.72-2.45 1.16-4.1 1.16-3.15 0-5.82-2.13-6.77-5H1.21v3.1c1.98 3.93 6.04 6.65 10.79 6.65z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.23 14.25c-.24-.72-.38-1.49-.38-2.25s.14-1.53.38-2.25V6.65H1.21C.44 8.19 0 9.93 0 12s.44 3.81 1.21 5.35l4.02-3.1z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.96 1.19 15.24 0 12 0 7.25 0 3.19 2.72 1.21 6.65L5.23 9.75c.95-2.87 3.62-5 6.77-5z"
-                />
-              </svg>
-              <span>Sign In with Google</span>
-            </button>
-          </div>
-
-          {/* Offline Sandbox Mode Switch */}
+          {/* Local Storage Mode Fallback */}
           <div className="space-y-4 pt-2">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -250,13 +191,13 @@ export default function AuthScreen({ onAuthSuccess, onEnterSandboxMode }: AuthSc
 
             <button
               type="button"
-              onClick={onEnterSandboxMode}
+              onClick={onEnterOfflineMode}
               className="w-full py-2.5 bg-slate-950 border border-dashed border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
             >
-              <span>Continue in Offline Sandbox Mode</span>
+              <span>Continue in Local Storage Mode</span>
             </button>
             <p className="text-[10px] text-slate-500 text-center font-medium max-w-[280px] mx-auto leading-relaxed">
-              Sandbox mode runs fully offline inside your browser. No Firebase database configuration is needed!
+              Local Storage Mode runs fully offline inside your browser. No central database connection is required!
             </p>
           </div>
 

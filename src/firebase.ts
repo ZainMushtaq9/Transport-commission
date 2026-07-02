@@ -142,7 +142,7 @@ export const initAuth = (
 // Google sign-in flow
 export const googleSignIn = async (requestWorkspace = false): Promise<{ user: User; accessToken: string } | null> => {
   if (!isFirebaseConfigured) {
-    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+    throw new Error('Database configurations are missing or invalid. Please run in Local Storage Mode.');
   }
 
   const targetProvider = requestWorkspace ? workspaceProvider : provider;
@@ -196,7 +196,7 @@ export const logout = async () => {
 // Email password sign in
 export const signInWithEmail = async (email: string, pass: string): Promise<User> => {
   if (!isFirebaseConfigured) {
-    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+    throw new Error('Database configurations are missing or invalid. Please run in Local Storage Mode.');
   }
   const credential = await signInWithEmailAndPassword(auth, email, pass);
   localStorage.setItem('tcm_last_activity', Date.now().toString());
@@ -206,7 +206,7 @@ export const signInWithEmail = async (email: string, pass: string): Promise<User
 // Email password sign up
 export const signUpWithEmail = async (email: string, pass: string): Promise<User> => {
   if (!isFirebaseConfigured) {
-    throw new Error('Firebase configuration keys are missing or invalid. Please run in Sandbox/Offline mode.');
+    throw new Error('Database configurations are missing or invalid. Please run in Local Storage Mode.');
   }
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
   localStorage.setItem('tcm_last_activity', Date.now().toString());
