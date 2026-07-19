@@ -17,6 +17,16 @@ export interface Driver {
   notes: string;
   createdAt: string;
   userId?: string;
+
+  // Extended Driver Profile Fields
+  driverPhone1?: string;
+  driverPhone2?: string;
+  driverPhone3?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  driverAddress?: string;
+  guarantorAddress?: string;
+  vehicleImage?: string; // Vehicle Image Upload
 }
 
 export interface Vehicle {
@@ -34,6 +44,7 @@ export interface Vehicle {
   notes: string;
   createdAt: string;
   userId?: string;
+  vehicleImage?: string; // Vehicle Image Upload
 }
 
 export interface Factory {
@@ -75,6 +86,18 @@ export interface Booking {
   notes: string;
   createdAt: string;
   userId?: string;
+
+  // Extended fields for Daily Inventory Module
+  biltiNo?: string;
+  companyName?: string;
+  receiverName?: string;
+  gariFeet?: string;
+  dariNo?: string;
+  vehicleModel?: string;
+  phone1?: string;
+  phone2?: string;
+  stopLocation?: string;
+  bookingTime?: string;
 }
 
 export interface Commission {

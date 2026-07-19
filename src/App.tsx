@@ -23,7 +23,8 @@ import {
   X, 
   Database, 
   LogOut,
-  LogIn
+  LogIn,
+  ClipboardList
 } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { 
@@ -49,6 +50,7 @@ import DirectoryTab from './components/DirectoryTab';
 import SettingsTab from './components/SettingsTab';
 import SearchOverlay from './components/SearchOverlay';
 import AuthScreen from './components/AuthScreen';
+import DailyInventoryTab from './components/DailyInventoryTab';
 
 // Setup modules
 import { 
@@ -84,7 +86,7 @@ import {
 import { syncEngine } from './utils/syncEngine';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'commissions' | 'drivers' | 'directory' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'commissions' | 'drivers' | 'directory' | 'settings' | 'inventory'>('dashboard');
   
   // Auth and Token states
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -132,6 +134,13 @@ export default function App() {
   });
 
   // --- 1. LOCAL DATA FALLBACKS (OFFLINE-FIRST DESIGN) ---
+  const getStorageKey = (key: string) => {
+    if (user) {
+      return `${key}_${user.uid}`;
+    }
+    return `${key}_sandbox`;
+  };
+
   const loadLocalData = () => {
     if (!user && !isSandboxMode) {
       setDrivers([]);
@@ -145,21 +154,21 @@ export default function App() {
       return;
     }
     try {
-      setDrivers(JSON.parse(localStorage.getItem('tcm_drivers') || '[]'));
-      setVehicles(JSON.parse(localStorage.getItem('tcm_vehicles') || '[]'));
-      setFactories(JSON.parse(localStorage.getItem('tcm_factories') || '[]'));
-      setCustomers(JSON.parse(localStorage.getItem('tcm_customers') || '[]'));
-      setBookings(JSON.parse(localStorage.getItem('tcm_bookings') || '[]'));
-      setCommissions(JSON.parse(localStorage.getItem('tcm_commissions') || '[]'));
-      setExpenses(JSON.parse(localStorage.getItem('tcm_expenses') || '[]'));
-      setNotifications(JSON.parse(localStorage.getItem('tcm_notifications') || '[]'));
+      setDrivers(JSON.parse(localStorage.getItem(getStorageKey('tcm_drivers')) || '[]'));
+      setVehicles(JSON.parse(localStorage.getItem(getStorageKey('tcm_vehicles')) || '[]'));
+      setFactories(JSON.parse(localStorage.getItem(getStorageKey('tcm_factories')) || '[]'));
+      setCustomers(JSON.parse(localStorage.getItem(getStorageKey('tcm_customers')) || '[]'));
+      setBookings(JSON.parse(localStorage.getItem(getStorageKey('tcm_bookings')) || '[]'));
+      setCommissions(JSON.parse(localStorage.getItem(getStorageKey('tcm_commissions')) || '[]'));
+      setExpenses(JSON.parse(localStorage.getItem(getStorageKey('tcm_expenses')) || '[]'));
+      setNotifications(JSON.parse(localStorage.getItem(getStorageKey('tcm_notifications')) || '[]'));
     } catch (e) {
       console.error('Error loading fallback local state:', e);
     }
   };
 
   const saveLocalData = (key: string, data: any) => {
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(getStorageKey(key), JSON.stringify(data));
   };
 
   const clearUserDataAndStorage = () => {
@@ -172,15 +181,15 @@ export default function App() {
     setExpenses([]);
     setNotifications([]);
 
-    localStorage.removeItem('tcm_drivers');
-    localStorage.removeItem('tcm_vehicles');
-    localStorage.removeItem('tcm_factories');
-    localStorage.removeItem('tcm_customers');
-    localStorage.removeItem('tcm_bookings');
-    localStorage.removeItem('tcm_commissions');
-    localStorage.removeItem('tcm_expenses');
-    localStorage.removeItem('tcm_notifications');
-    localStorage.removeItem('tcm_last_backup');
+    localStorage.removeItem(getStorageKey('tcm_drivers'));
+    localStorage.removeItem(getStorageKey('tcm_vehicles'));
+    localStorage.removeItem(getStorageKey('tcm_factories'));
+    localStorage.removeItem(getStorageKey('tcm_customers'));
+    localStorage.removeItem(getStorageKey('tcm_bookings'));
+    localStorage.removeItem(getStorageKey('tcm_commissions'));
+    localStorage.removeItem(getStorageKey('tcm_expenses'));
+    localStorage.removeItem(getStorageKey('tcm_notifications'));
+    localStorage.removeItem(getStorageKey('tcm_last_backup'));
     setBackupMetadata({ lastBackupDate: '', status: 'idle' });
   };
 
@@ -188,19 +197,19 @@ export default function App() {
   useEffect(() => {
     const wasSeeded = localStorage.getItem('tcm_seeded');
     if (wasSeeded === 'yes') {
-      localStorage.removeItem('tcm_drivers');
-      localStorage.removeItem('tcm_vehicles');
-      localStorage.removeItem('tcm_factories');
-      localStorage.removeItem('tcm_customers');
-      localStorage.removeItem('tcm_bookings');
-      localStorage.removeItem('tcm_commissions');
-      localStorage.removeItem('tcm_expenses');
-      localStorage.removeItem('tcm_notifications');
-      localStorage.removeItem('tcm_last_backup');
+      localStorage.removeItem('tcm_drivers_sandbox');
+      localStorage.removeItem('tcm_vehicles_sandbox');
+      localStorage.removeItem('tcm_factories_sandbox');
+      localStorage.removeItem('tcm_customers_sandbox');
+      localStorage.removeItem('tcm_bookings_sandbox');
+      localStorage.removeItem('tcm_commissions_sandbox');
+      localStorage.removeItem('tcm_expenses_sandbox');
+      localStorage.removeItem('tcm_notifications_sandbox');
+      localStorage.removeItem('tcm_last_backup_sandbox');
       localStorage.removeItem('tcm_seeded');
     }
     loadLocalData();
-  }, []);
+  }, [user]);
 
   // Load local data when entering sandbox mode
   useEffect(() => {
@@ -325,16 +334,16 @@ export default function App() {
         const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', user.uid)));
         const hasFirestoreData = !driversSnap.empty;
 
-        // If Firestore is empty, but we have local data, upload local data to Firestore first
+        // If Firestore is empty, but we have local sandbox data, upload local sandbox data to Firestore first
         if (!hasFirestoreData) {
-          const localDrivers = JSON.parse(localStorage.getItem('tcm_drivers') || '[]');
-          const localVehicles = JSON.parse(localStorage.getItem('tcm_vehicles') || '[]');
-          const localFactories = JSON.parse(localStorage.getItem('tcm_factories') || '[]');
-          const localCustomers = JSON.parse(localStorage.getItem('tcm_customers') || '[]');
-          const localBookings = JSON.parse(localStorage.getItem('tcm_bookings') || '[]');
-          const localCommissions = JSON.parse(localStorage.getItem('tcm_commissions') || '[]');
-          const localExpenses = JSON.parse(localStorage.getItem('tcm_expenses') || '[]');
-          const localNotifications = JSON.parse(localStorage.getItem('tcm_notifications') || '[]');
+          const localDrivers = JSON.parse(localStorage.getItem('tcm_drivers_sandbox') || '[]');
+          const localVehicles = JSON.parse(localStorage.getItem('tcm_vehicles_sandbox') || '[]');
+          const localFactories = JSON.parse(localStorage.getItem('tcm_factories_sandbox') || '[]');
+          const localCustomers = JSON.parse(localStorage.getItem('tcm_customers_sandbox') || '[]');
+          const localBookings = JSON.parse(localStorage.getItem('tcm_bookings_sandbox') || '[]');
+          const localCommissions = JSON.parse(localStorage.getItem('tcm_commissions_sandbox') || '[]');
+          const localExpenses = JSON.parse(localStorage.getItem('tcm_expenses_sandbox') || '[]');
+          const localNotifications = JSON.parse(localStorage.getItem('tcm_notifications_sandbox') || '[]');
 
           const hasLocalData = localDrivers.length > 0 || 
                                localVehicles.length > 0 || 
@@ -917,6 +926,72 @@ export default function App() {
     triggerAutoDriveBackup(drivers, vehicles, factories, customers, updated);
   };
 
+  const handleUpdateBooking = async (id: string, updatedFields: Partial<Omit<Booking, 'id' | 'createdAt'>>) => {
+    const updated = bookings.map(b => b.id === id ? { ...b, ...updatedFields } as Booking : b);
+    setBookings(updated);
+    saveLocalData('tcm_bookings', updated);
+
+    if (user) {
+      await updateDoc(doc(db, 'bookings', id), updatedFields);
+      // Synchronize changes to corresponding Commission record if financial fields changed
+      const commissionUpdate: any = {};
+      if (updatedFields.fare !== undefined) commissionUpdate.fare = updatedFields.fare;
+      if (updatedFields.commission !== undefined) commissionUpdate.commission = updatedFields.commission;
+      if (updatedFields.bookingDate !== undefined) commissionUpdate.date = updatedFields.bookingDate;
+      if (updatedFields.driverId !== undefined) commissionUpdate.driverId = updatedFields.driverId;
+      if (updatedFields.vehicleId !== undefined) commissionUpdate.vehicleId = updatedFields.vehicleId;
+      if (updatedFields.factoryId !== undefined) commissionUpdate.factoryId = updatedFields.factoryId;
+
+      if (Object.keys(commissionUpdate).length > 0) {
+        const commToUpdate = commissions.find(c => c.bookingId === id);
+        if (commToUpdate) {
+          const updatedComms = commissions.map(c => c.bookingId === id ? { ...c, ...commissionUpdate } as Commission : c);
+          setCommissions(updatedComms);
+          saveLocalData('tcm_commissions', updatedComms);
+          await updateDoc(doc(db, 'commissions', commToUpdate.id), commissionUpdate);
+        }
+      }
+    } else {
+      const commissionUpdate: any = {};
+      if (updatedFields.fare !== undefined) commissionUpdate.fare = updatedFields.fare;
+      if (updatedFields.commission !== undefined) commissionUpdate.commission = updatedFields.commission;
+      if (updatedFields.bookingDate !== undefined) commissionUpdate.date = updatedFields.bookingDate;
+      if (updatedFields.driverId !== undefined) commissionUpdate.driverId = updatedFields.driverId;
+      if (updatedFields.vehicleId !== undefined) commissionUpdate.vehicleId = updatedFields.vehicleId;
+      if (updatedFields.factoryId !== undefined) commissionUpdate.factoryId = updatedFields.factoryId;
+
+      if (Object.keys(commissionUpdate).length > 0) {
+        const updatedComms = commissions.map(c => c.bookingId === id ? { ...c, ...commissionUpdate } as Commission : c);
+        setCommissions(updatedComms);
+        saveLocalData('tcm_commissions', updatedComms);
+      }
+    }
+
+    addNotification('Order Updated', `Successfully updated order details.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, updated, commissions);
+  };
+
+  const handleDeleteBooking = async (id: string) => {
+    const updated = bookings.filter(b => b.id !== id);
+    setBookings(updated);
+    saveLocalData('tcm_bookings', updated);
+
+    const updatedComms = commissions.filter(c => c.bookingId !== id);
+    setCommissions(updatedComms);
+    saveLocalData('tcm_commissions', updatedComms);
+
+    if (user) {
+      await deleteDoc(doc(db, 'bookings', id));
+      const commToDelete = commissions.find(c => c.bookingId === id);
+      if (commToDelete) {
+        await deleteDoc(doc(db, 'commissions', commToDelete.id));
+      }
+    }
+
+    addNotification('Order Deleted', 'Removed transport order and commission ledger.');
+    triggerAutoDriveBackup(drivers, vehicles, factories, customers, updated, updatedComms);
+  };
+
   const handleToggleCommissionStatus = async (bookingId: string, currentStatus: 'Paid' | 'Unpaid') => {
     const newStatus = currentStatus === 'Paid' ? 'Unpaid' : 'Paid';
     const updatedComms = commissions.map(c => 
@@ -1359,7 +1434,7 @@ export default function App() {
             <h1 className="text-sm font-bold text-slate-900 tracking-tight">Transport Manager</h1>
             <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${user ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-              {user ? 'Cloud Database Mode' : 'Local Storage Mode'}
+              {user ? 'Cloud Database Mode' : 'Offline Sandbox Mode'}
             </p>
           </div>
         </div>
@@ -1512,6 +1587,20 @@ export default function App() {
             onGeneratePdfReport={handleGeneratePdfReport}
           />
         )}
+
+        {activeTab === 'inventory' && (
+          <DailyInventoryTab 
+            bookings={bookings} 
+            drivers={drivers} 
+            vehicles={vehicles} 
+            factories={factories} 
+            customers={customers}
+            accessToken={accessToken}
+            onAddBooking={handleAddBooking}
+            onUpdateBooking={handleUpdateBooking}
+            onDeleteBooking={handleDeleteBooking}
+          />
+        )}
       </main>
 
       {/* 3. FLOAT FLOATING ACTION QUICK BUTTON (One Hand optimization) */}
@@ -1591,6 +1680,16 @@ export default function App() {
         >
           <Briefcase size={20} />
           <span className="text-[9px] font-bold mt-1 tracking-tight">Bookings</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`flex flex-col items-center justify-center transition-all ${
+            activeTab === 'inventory' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <ClipboardList size={20} />
+          <span className="text-[9px] font-bold mt-1 tracking-tight">Daily Log</span>
         </button>
 
         <button

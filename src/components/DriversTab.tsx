@@ -18,7 +18,14 @@ import {
   Camera, 
   Hash,
   ChevronRight,
-  Edit2
+  Edit2,
+  Download,
+  Trash2,
+  RefreshCw,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Share2
 } from 'lucide-react';
 import { Driver, Vehicle } from '../types';
 
@@ -48,6 +55,10 @@ export default function DriversTab({
   // Search input state
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Zoom / View Attachment state
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+
   // 1. Driver Form State
   const [fullName, setFullName] = useState('');
   const [fatherName, setFatherName] = useState('');
@@ -60,6 +71,16 @@ export default function DriversTab({
   const [cnicFront, setCnicFront] = useState('');
   const [cnicBack, setCnicBack] = useState('');
 
+  // Extended Driver Form Fields
+  const [driverPhone1, setDriverPhone1] = useState('');
+  const [driverPhone2, setDriverPhone2] = useState('');
+  const [driverPhone3, setDriverPhone3] = useState('');
+  const [guarantorName, setGuarantorName] = useState('');
+  const [guarantorPhone, setGuarantorPhone] = useState('');
+  const [driverAddress, setDriverAddress] = useState('');
+  const [guarantorAddress, setGuarantorAddress] = useState('');
+  const [driverVehicleImage, setDriverVehicleImage] = useState('');
+
   // 2. Vehicle Form State
   const [regNum, setRegNum] = useState('');
   const [vehicleType, setVehicleType] = useState('6 Wheeler');
@@ -71,6 +92,7 @@ export default function DriversTab({
   const [fitnessExp, setFitnessExp] = useState(new Date().toISOString().split('T')[0]);
   const [tokenExp, setTokenExp] = useState(new Date().toISOString().split('T')[0]);
   const [vehicleNotes, setVehicleNotes] = useState('');
+  const [vehicleImg, setVehicleImg] = useState('');
 
   // Helpers to start editing
   const handleEditDriverClick = (driver: Driver) => {
@@ -85,6 +107,17 @@ export default function DriversTab({
     setDriverPhoto(driver.photo || '');
     setCnicFront(driver.cnicFrontImage || '');
     setCnicBack(driver.cnicBackImage || '');
+
+    // Populating extended fields
+    setDriverPhone1(driver.driverPhone1 || driver.phoneNumber || '');
+    setDriverPhone2(driver.driverPhone2 || driver.whatsAppNumber || '');
+    setDriverPhone3(driver.driverPhone3 || '');
+    setGuarantorName(driver.guarantorName || '');
+    setGuarantorPhone(driver.guarantorPhone || '');
+    setDriverAddress(driver.driverAddress || driver.address || '');
+    setGuarantorAddress(driver.guarantorAddress || '');
+    setDriverVehicleImage(driver.vehicleImage || '');
+
     setShowAddDriver(true);
   };
 
@@ -100,6 +133,7 @@ export default function DriversTab({
     setFitnessExp(vehicle.fitnessExpiry);
     setTokenExp(vehicle.tokenExpiry);
     setVehicleNotes(vehicle.notes || '');
+    setVehicleImg(vehicle.vehicleImage || '');
     setShowAddVehicle(true);
   };
 
@@ -114,6 +148,16 @@ export default function DriversTab({
     setDriverPhoto('');
     setCnicFront('');
     setCnicBack('');
+
+    setDriverPhone1('');
+    setDriverPhone2('');
+    setDriverPhone3('');
+    setGuarantorName('');
+    setGuarantorPhone('');
+    setDriverAddress('');
+    setGuarantorAddress('');
+    setDriverVehicleImage('');
+
     setEditingDriver(null);
     setShowAddDriver(false);
   };
@@ -126,6 +170,7 @@ export default function DriversTab({
     setRegBookImg('');
     setInsurance('');
     setVehicleNotes('');
+    setVehicleImg('');
     setEditingVehicle(null);
     setShowAddVehicle(false);
   };
@@ -152,35 +197,44 @@ export default function DriversTab({
   const handleAddDriverSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const finalDriverPhone1 = driverPhone1 || phoneNumber;
+    const finalDriverPhone2 = driverPhone2 || whatsAppNumber;
+    const finalDriverAddress = driverAddress || address;
+
+    const driverPayload = {
+      fullName,
+      fatherName,
+      phoneNumber: finalDriverPhone1,
+      whatsAppNumber: finalDriverPhone2,
+      cnicNumber,
+      address: finalDriverAddress,
+      notes: driverNotes,
+      photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      cnicFrontImage: cnicFront,
+      cnicBackImage: cnicBack,
+      
+      driverPhone1: finalDriverPhone1,
+      driverPhone2: finalDriverPhone2,
+      driverPhone3,
+      guarantorName,
+      guarantorPhone,
+      driverAddress: finalDriverAddress,
+      guarantorAddress,
+      vehicleImage: driverVehicleImage
+    };
+
     if (editingDriver) {
       if (onUpdateDriver) {
-        onUpdateDriver(editingDriver.id, {
-          fullName,
-          fatherName,
-          phoneNumber,
-          whatsAppNumber,
-          cnicNumber,
-          address,
-          notes: driverNotes,
-          photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          cnicFrontImage: cnicFront,
-          cnicBackImage: cnicBack
-        });
+        onUpdateDriver(editingDriver.id, driverPayload);
       }
       // Update selected driver state so detailed profile modal updates instantly!
       if (selectedDriver && selectedDriver.id === editingDriver.id) {
         setSelectedDriver({
           ...selectedDriver,
-          fullName,
-          fatherName,
-          phoneNumber,
-          whatsAppNumber,
-          cnicNumber,
-          address,
-          notes: driverNotes,
-          photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          cnicFrontImage: cnicFront,
-          cnicBackImage: cnicBack
+          ...driverPayload,
+          id: editingDriver.id,
+          createdAt: editingDriver.createdAt,
+          userId: editingDriver.userId
         });
       }
     } else {
@@ -189,18 +243,7 @@ export default function DriversTab({
         return;
       }
 
-      onAddDriver({
-        fullName,
-        fatherName,
-        phoneNumber,
-        whatsAppNumber,
-        cnicNumber,
-        address,
-        notes: driverNotes,
-        photo: driverPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80', // Default professional avatar
-        cnicFrontImage: cnicFront,
-        cnicBackImage: cnicBack
-      });
+      onAddDriver(driverPayload);
     }
 
     handleCloseDriverModal();
@@ -211,20 +254,23 @@ export default function DriversTab({
 
     const normalizedReg = regNum.trim().toUpperCase();
 
+    const vehiclePayload = {
+      registrationNumber: normalizedReg,
+      vehicleType,
+      capacity: parseFloat(capacity) || 0,
+      model,
+      color,
+      registrationBookImage: regBookImg,
+      insurance,
+      fitnessExpiry: fitnessExp,
+      tokenExpiry: tokenExp,
+      notes: vehicleNotes,
+      vehicleImage: vehicleImg
+    };
+
     if (editingVehicle) {
       if (onUpdateVehicle) {
-        onUpdateVehicle(editingVehicle.id, {
-          registrationNumber: normalizedReg,
-          vehicleType,
-          capacity: parseFloat(capacity) || 0,
-          model,
-          color,
-          registrationBookImage: regBookImg,
-          insurance,
-          fitnessExpiry: fitnessExp,
-          tokenExpiry: tokenExp,
-          notes: vehicleNotes
-        });
+        onUpdateVehicle(editingVehicle.id, vehiclePayload);
       }
     } else {
       if (existingRegs.includes(normalizedReg)) {
@@ -235,17 +281,8 @@ export default function DriversTab({
       if (!selectedDriver) return;
 
       onAddVehicle({
-        driverId: selectedDriver.id,
-        registrationNumber: normalizedReg,
-        vehicleType,
-        capacity: parseFloat(capacity) || 0,
-        model,
-        color,
-        registrationBookImage: regBookImg,
-        insurance,
-        fitnessExpiry: fitnessExp,
-        tokenExpiry: tokenExp,
-        notes: vehicleNotes
+        ...vehiclePayload,
+        driverId: selectedDriver.id
       });
     }
 
@@ -264,10 +301,46 @@ export default function DriversTab({
         d.fullName.toLowerCase().includes(q) ||
         d.cnicNumber.toLowerCase().includes(q) ||
         d.phoneNumber.toLowerCase().includes(q) ||
+        (d.guarantorName || '').toLowerCase().includes(q) ||
         vehicleMatches
       );
     });
   }, [drivers, vehicles, searchQuery]);
+
+  // Handle Share Profile Text
+  const handleShareProfileText = (driver: Driver) => {
+    const shareText = `*DRIVER PROFILE VERIFICATION*\n` +
+      `*Name:* ${driver.fullName}\n` +
+      `*Father Name:* ${driver.fatherName}\n` +
+      `*Phone 1:* ${driver.driverPhone1 || driver.phoneNumber}\n` +
+      `*Phone 2:* ${driver.driverPhone2 || driver.whatsAppNumber || 'N/A'}\n` +
+      `*CNIC:* ${driver.cnicNumber}\n` +
+      `*Guarantor:* ${driver.guarantorName || 'N/A'} (${driver.guarantorPhone || 'N/A'})\n` +
+      `*Address:* ${driver.driverAddress || driver.address}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      alert('Driver profile verification copied to clipboard!');
+    } else {
+      alert(shareText);
+    }
+  };
+
+  // Image actions (Zoom / Full Screen) helper
+  const handleOpenZoom = (imageUrl: string) => {
+    if (!imageUrl) return;
+    setZoomedImage(imageUrl);
+    setZoomScale(1);
+  };
+
+  const handleDownloadImage = (base64Url: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = base64Url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-4 pb-24 animate-fadeIn" id="drivers_tab_view">
@@ -278,7 +351,7 @@ export default function DriversTab({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search name, phone, CNIC or Vehicle..."
+            placeholder="Search name, phone, guarantor, CNIC or Vehicle..."
             className="w-full pl-4 pr-4 py-2 bg-white border border-slate-100 rounded-xl text-xs focus:border-blue-500 focus:outline-hidden"
           />
         </div>
@@ -317,7 +390,7 @@ export default function DriversTab({
                     {d.fullName}
                   </h4>
                   <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                    <Phone size={10} /> {d.phoneNumber}
+                    <Phone size={10} /> {d.driverPhone1 || d.phoneNumber}
                   </p>
 
                   {/* Badges of owned vehicles */}
@@ -357,6 +430,13 @@ export default function DriversTab({
                   <Edit2 size={12} /> Edit Profile
                 </button>
                 <button
+                  onClick={() => handleShareProfileText(selectedDriver)}
+                  className="text-slate-500 hover:text-slate-700 p-1.5 hover:bg-slate-50 rounded-lg"
+                  title="Share profile text"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
                   onClick={() => setSelectedDriver(null)}
                   className="text-slate-400 hover:text-slate-600 font-bold"
                 >
@@ -369,17 +449,24 @@ export default function DriversTab({
 
             {/* Profile Summary Card */}
             <div className="flex items-start gap-4">
-              <img
-                src={selectedDriver.photo}
-                alt={selectedDriver.fullName}
-                referrerPolicy="no-referrer"
-                className="w-20 h-20 rounded-2xl object-cover bg-slate-50 border border-slate-200"
-              />
+              <div className="relative group cursor-zoom-in" onClick={() => handleOpenZoom(selectedDriver.photo)}>
+                <img
+                  src={selectedDriver.photo}
+                  alt={selectedDriver.fullName}
+                  referrerPolicy="no-referrer"
+                  className="w-20 h-20 rounded-2xl object-cover bg-slate-50 border border-slate-200"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                  <Maximize2 size={16} className="text-white" />
+                </div>
+              </div>
               <div className="space-y-1">
                 <h4 className="text-base font-bold text-slate-900">{selectedDriver.fullName}</h4>
                 <p className="text-xs font-semibold text-slate-400">Father Name: {selectedDriver.fatherName}</p>
-                <p className="text-xs font-semibold text-slate-400 flex items-center gap-1">
-                  <Phone size={12} /> {selectedDriver.phoneNumber} {selectedDriver.whatsAppNumber && `(WA: ${selectedDriver.whatsAppNumber})`}
+                <p className="text-xs font-semibold text-slate-400 flex flex-col gap-0.5">
+                  <span className="flex items-center gap-1"><Phone size={10} /> {selectedDriver.driverPhone1 || selectedDriver.phoneNumber}</span>
+                  {selectedDriver.driverPhone2 && <span className="text-[10px] text-slate-500 font-medium pl-3.5">WA: {selectedDriver.driverPhone2}</span>}
+                  {selectedDriver.driverPhone3 && <span className="text-[10px] text-slate-500 font-medium pl-3.5">Phone 3: {selectedDriver.driverPhone3}</span>}
                 </p>
                 <p className="text-xs font-semibold text-slate-400 flex items-center gap-1">
                   <Hash size={12} /> CNIC: {selectedDriver.cnicNumber}
@@ -387,16 +474,26 @@ export default function DriversTab({
               </div>
             </div>
 
-            {/* Address & Remarks list */}
+            {/* Address & Guarantor list */}
             <div className="bg-slate-50 p-3 rounded-2xl space-y-2 text-xs text-slate-600">
               <p className="flex gap-1">
                 <MapPin size={14} className="text-slate-400 shrink-0" />
-                <span><strong className="text-slate-800">Address:</strong> {selectedDriver.address || 'No address registered.'}</span>
+                <span><strong className="text-slate-800">Address:</strong> {selectedDriver.driverAddress || selectedDriver.address || 'No address registered.'}</span>
               </p>
-              <p className="flex gap-1 border-t border-slate-200/50 pt-2">
-                <FileText size={14} className="text-slate-400 shrink-0" />
-                <span><strong className="text-slate-800">Special Notes:</strong> {selectedDriver.notes || 'No notes added.'}</span>
-              </p>
+              
+              <div className="border-t border-slate-200/50 pt-2 space-y-1">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Guarantor Profile</span>
+                <p><strong className="text-slate-800">Name:</strong> {selectedDriver.guarantorName || 'No Guarantor Registered'}</p>
+                {selectedDriver.guarantorPhone && <p><strong className="text-slate-800">Phone:</strong> {selectedDriver.guarantorPhone}</p>}
+                {selectedDriver.guarantorAddress && <p><strong className="text-slate-800">Address:</strong> {selectedDriver.guarantorAddress}</p>}
+              </div>
+
+              {selectedDriver.notes && (
+                <p className="flex gap-1 border-t border-slate-200/50 pt-2">
+                  <FileText size={14} className="text-slate-400 shrink-0" />
+                  <span><strong className="text-slate-800">Notes:</strong> {selectedDriver.notes}</span>
+                </p>
+              )}
             </div>
 
             {/* CNIC Documents Attached gallery */}
@@ -404,18 +501,50 @@ export default function DriversTab({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">CNIC Attachments Verification</span>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 flex flex-col items-center">
-                  <span className="text-[10px] font-bold text-slate-500 mb-1">CNIC FRONT</span>
+                  <div className="flex justify-between w-full items-center mb-1">
+                    <span className="text-[10px] font-bold text-slate-500">CNIC FRONT</span>
+                    {selectedDriver.cnicFrontImage && (
+                      <button 
+                        onClick={() => handleDownloadImage(selectedDriver.cnicFrontImage, 'cnic_front.png')}
+                        className="text-slate-400 hover:text-blue-600 p-0.5"
+                        title="Download"
+                      >
+                        <Download size={10} />
+                      </button>
+                    )}
+                  </div>
                   {selectedDriver.cnicFrontImage ? (
-                    <img src={selectedDriver.cnicFrontImage} referrerPolicy="no-referrer" className="w-full h-24 rounded-lg object-contain" />
+                    <img 
+                      src={selectedDriver.cnicFrontImage} 
+                      onClick={() => handleOpenZoom(selectedDriver.cnicFrontImage)}
+                      referrerPolicy="no-referrer" 
+                      className="w-full h-24 rounded-lg object-contain cursor-zoom-in" 
+                    />
                   ) : (
                     <div className="h-24 flex items-center justify-center text-[10px] text-slate-400 font-semibold">No Image</div>
                   )}
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 flex flex-col items-center">
-                  <span className="text-[10px] font-bold text-slate-500 mb-1">CNIC BACK</span>
+                  <div className="flex justify-between w-full items-center mb-1">
+                    <span className="text-[10px] font-bold text-slate-500">CNIC BACK</span>
+                    {selectedDriver.cnicBackImage && (
+                      <button 
+                        onClick={() => handleDownloadImage(selectedDriver.cnicBackImage, 'cnic_back.png')}
+                        className="text-slate-400 hover:text-blue-600 p-0.5"
+                        title="Download"
+                      >
+                        <Download size={10} />
+                      </button>
+                    )}
+                  </div>
                   {selectedDriver.cnicBackImage ? (
-                    <img src={selectedDriver.cnicBackImage} referrerPolicy="no-referrer" className="w-full h-24 rounded-lg object-contain" />
+                    <img 
+                      src={selectedDriver.cnicBackImage} 
+                      onClick={() => handleOpenZoom(selectedDriver.cnicBackImage)}
+                      referrerPolicy="no-referrer" 
+                      className="w-full h-24 rounded-lg object-contain cursor-zoom-in" 
+                    />
                   ) : (
                     <div className="h-24 flex items-center justify-center text-[10px] text-slate-400 font-semibold">No Image</div>
                   )}
@@ -437,6 +566,7 @@ export default function DriversTab({
                     setRegBookImg('');
                     setInsurance('');
                     setVehicleNotes('');
+                    setVehicleImg('');
                     setShowAddVehicle(true);
                   }}
                   className="text-xs font-bold text-blue-600 flex items-center gap-0.5"
@@ -461,16 +591,69 @@ export default function DriversTab({
                         </button>
                       </div>
                     </div>
+                    
                     <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-semibold">
                       <p>Capacity: {v.capacity} Tons</p>
                       <p>Model: {v.color} {v.model}</p>
                       <p>Insurance: {v.insurance || 'None'}</p>
                       <p>Token Expiry: {v.tokenExpiry}</p>
                     </div>
+
+                    {/* Registration book document */}
                     {v.registrationBookImage && (
                       <div className="pt-1">
-                        <span className="text-[9px] text-slate-400 font-bold uppercase block mb-1">Registration Book Photo</span>
-                        <img src={v.registrationBookImage} referrerPolicy="no-referrer" className="w-full h-24 rounded-lg object-contain bg-white border border-slate-100" />
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Registration Book File</span>
+                          <button 
+                            onClick={() => handleDownloadImage(v.registrationBookImage, `reg_book_${v.registrationNumber}.png`)}
+                            className="text-slate-400 hover:text-blue-600"
+                          >
+                            <Download size={10} />
+                          </button>
+                        </div>
+                        <img 
+                          src={v.registrationBookImage} 
+                          onClick={() => handleOpenZoom(v.registrationBookImage)}
+                          referrerPolicy="no-referrer" 
+                          className="w-full h-24 rounded-lg object-contain bg-white border border-slate-100 cursor-zoom-in" 
+                        />
+                      </div>
+                    )}
+
+                    {/* Vehicle Image Attachment */}
+                    {v.vehicleImage && (
+                      <div className="pt-2 border-t mt-1.5">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Vehicle Real Photo</span>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleDownloadImage(v.vehicleImage!, `vehicle_${v.registrationNumber}.png`)}
+                              className="text-slate-400 hover:text-blue-600"
+                              title="Download"
+                            >
+                              <Download size={10} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm('Delete this vehicle image?')) {
+                                  if (onUpdateVehicle) {
+                                    onUpdateVehicle(v.id, { vehicleImage: '' });
+                                  }
+                                }
+                              }}
+                              className="text-rose-500 hover:text-rose-700"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                        </div>
+                        <img 
+                          src={v.vehicleImage} 
+                          onClick={() => handleOpenZoom(v.vehicleImage!)}
+                          referrerPolicy="no-referrer" 
+                          className="w-full h-28 rounded-lg object-cover bg-white border border-slate-100 cursor-zoom-in" 
+                        />
                       </div>
                     )}
                   </div>
@@ -598,26 +781,45 @@ export default function DriversTab({
                     value={insurance}
                     onChange={(e) => setInsurance(e.target.value)}
                     placeholder="Policy / Company"
-                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:outline-hidden"
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
               </div>
 
               {/* Document Attachments inside Vehicle */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Registration Book Image</label>
-                <div className="mt-1 flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-600">
-                    <Camera size={14} className="text-blue-500" />
-                    Select Document File
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, setRegBookImg)}
-                      className="hidden"
-                    />
-                  </label>
-                  {regBookImg && <span className="text-[10px] font-bold text-emerald-600">✓ Image Loaded</span>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Registration Book</label>
+                  <div className="mt-1 flex flex-col gap-1">
+                    <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-600 bg-slate-50">
+                      <Camera size={14} className="text-blue-500" />
+                      Upload Reg Book
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, setRegBookImg)}
+                        className="hidden"
+                      />
+                    </label>
+                    {regBookImg && <span className="text-[9px] font-bold text-emerald-600 text-center">✓ Image Loaded</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Vehicle Photo</label>
+                  <div className="mt-1 flex flex-col gap-1">
+                    <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs font-semibold text-slate-600 bg-slate-50">
+                      <Camera size={14} className="text-emerald-500" />
+                      Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, setVehicleImg)}
+                        className="hidden"
+                      />
+                    </label>
+                    {vehicleImg && <span className="text-[9px] font-bold text-emerald-600 text-center">✓ Image Loaded</span>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -640,7 +842,9 @@ export default function DriversTab({
           </form>
         </div>,
         document.body
-      )}      {/* Add Driver Full Modal Dialog */}
+      )}
+
+      {/* Add Driver Full Modal Dialog */}
       {showAddDriver && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
           <form onSubmit={handleAddDriverSubmit} className="relative bg-white rounded-3xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
@@ -660,7 +864,7 @@ export default function DriversTab({
             <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-3 sm:space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Full Name</label>
                   <input
                     type="text"
                     value={fullName}
@@ -684,30 +888,50 @@ export default function DriversTab({
                 </div>
               </div>
 
+              {/* 3 Driver Phone fields */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone Number</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Phone 1 (Primary)</label>
                   <input
                     type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="e.g. 0300..."
+                    value={driverPhone1}
+                    onChange={(e) => {
+                      setDriverPhone1(e.target.value);
+                      setPhoneNumber(e.target.value);
+                    }}
+                    placeholder="Primary Phone"
                     className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">WhatsApp No.</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Phone 2 (WA)</label>
                   <input
                     type="tel"
-                    value={whatsAppNumber}
-                    onChange={(e) => setWhatsAppNumber(e.target.value)}
+                    value={driverPhone2}
+                    onChange={(e) => {
+                      setDriverPhone2(e.target.value);
+                      setWhatsAppNumber(e.target.value);
+                    }}
                     placeholder="WhatsApp No."
                     className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
 
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Phone 3</label>
+                  <input
+                    type="tel"
+                    value={driverPhone3}
+                    onChange={(e) => setDriverPhone3(e.target.value)}
+                    placeholder="Secondary Backup No."
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CNIC No. (Unique)</label>
                   <input
@@ -719,29 +943,74 @@ export default function DriversTab({
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Residential Address</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Complete home address"
-                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
-                    required
-                  />
-                </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Special Profile Remarks</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Profile Remarks</label>
                   <input
                     type="text"
                     value={driverNotes}
                     onChange={(e) => setDriverNotes(e.target.value)}
-                    placeholder="Reliable, night driver, etc."
+                    placeholder="Night driving, Bedford experience, etc."
                     className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Multiline Residential Address */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Residential Address (Multiline)</label>
+                <textarea
+                  value={driverAddress}
+                  onChange={(e) => {
+                    setDriverAddress(e.target.value);
+                    setAddress(e.target.value);
+                  }}
+                  placeholder="Street, Mohallah, City, District..."
+                  rows={2}
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:border-blue-500 focus:outline-hidden"
+                  required
+                />
+              </div>
+
+              {/* Guarantor Details with Multiline Address */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/50 space-y-3">
+                <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">Assigned Guarantor Information</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Guarantor Name</label>
+                    <input
+                      type="text"
+                      value={guarantorName}
+                      onChange={(e) => setGuarantorName(e.target.value)}
+                      placeholder="Guarantor Name"
+                      className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-white focus:border-blue-500 focus:outline-hidden"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Guarantor Phone</label>
+                    <input
+                      type="tel"
+                      value={guarantorPhone}
+                      onChange={(e) => setGuarantorPhone(e.target.value)}
+                      placeholder="Guarantor Phone"
+                      className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-white focus:border-blue-500 focus:outline-hidden"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Guarantor Multiline Address</label>
+                  <textarea
+                    value={guarantorAddress}
+                    onChange={(e) => setGuarantorAddress(e.target.value)}
+                    placeholder="Guarantor complete residence/work address..."
+                    rows={2}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl text-xs bg-white focus:border-blue-500 focus:outline-hidden"
+                    required
                   />
                 </div>
               </div>
@@ -803,6 +1072,55 @@ export default function DriversTab({
         </div>,
         document.body
       )}
+
+      {/* FULL-SCREEN ZOOM MODAL OVERLAY */}
+      {zoomedImage && createPortal(
+        <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-4 animate-fadeIn">
+          {/* Zoom Toolbar */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+            <button 
+              onClick={() => setZoomScale(s => Math.min(4, s + 0.25))} 
+              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl text-white font-bold transition-all flex items-center gap-1 text-xs"
+            >
+              <ZoomIn size={14} /> Zoom In
+            </button>
+            <button 
+              onClick={() => setZoomScale(s => Math.max(0.5, s - 0.25))} 
+              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl text-white font-bold transition-all flex items-center gap-1 text-xs"
+            >
+              <ZoomOut size={14} /> Zoom Out
+            </button>
+            <button 
+              onClick={() => setZoomScale(1)} 
+              className="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl text-white font-bold transition-all text-xs"
+            >
+              1:1
+            </button>
+            <button 
+              onClick={() => handleDownloadImage(zoomedImage, 'verification_doc.png')} 
+              className="bg-blue-600 hover:bg-blue-700 px-3 py-2.5 rounded-xl text-white font-bold transition-all flex items-center gap-1 text-xs shadow-md"
+            >
+              <Download size={14} /> Download
+            </button>
+            <button 
+              onClick={() => { setZoomedImage(null); setZoomScale(1); }} 
+              className="bg-red-600 hover:bg-red-700 p-2.5 rounded-xl text-white font-bold transition-all text-xs"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          
+          <div className="overflow-auto max-w-full max-h-[85vh] flex items-center justify-center p-10 cursor-grab active:cursor-grabbing">
+            <img 
+              src={zoomedImage} 
+              style={{ transform: `scale(${zoomScale})` }} 
+              className="max-w-full max-h-[75vh] object-contain transition-transform duration-200 shadow-2xl rounded-lg" 
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 }

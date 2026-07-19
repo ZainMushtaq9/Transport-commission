@@ -178,7 +178,7 @@ export default function AuthScreen({ onAuthSuccess, onEnterOfflineMode }: AuthSc
             </button>
           </form>
 
-          {/* Local Storage Mode Fallback */}
+          {/* Offline Sandbox Mode Fallback */}
           <div className="space-y-4 pt-2">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -194,10 +194,10 @@ export default function AuthScreen({ onAuthSuccess, onEnterOfflineMode }: AuthSc
               onClick={onEnterOfflineMode}
               className="w-full py-2.5 bg-slate-950 border border-dashed border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
             >
-              <span>Continue in Local Storage Mode</span>
+              <span>Continue in Offline Sandbox Mode</span>
             </button>
             <p className="text-[10px] text-slate-500 text-center font-medium max-w-[280px] mx-auto leading-relaxed">
-              Local Storage Mode runs fully offline inside your browser. No central database connection is required!
+              Offline Sandbox Mode runs fully offline inside your browser. No central database connection is required!
             </p>
           </div>
 

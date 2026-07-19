@@ -171,7 +171,7 @@ export default function SettingsTab({
           </div>
         ) : (
           <div className="text-center py-4 space-y-3">
-            <p className="text-xs text-slate-500 font-medium">You are currently running in Offline Local Mode. Sign in with a registered email to enable real-time cloud data entries.</p>
+            <p className="text-xs text-slate-500 font-medium">You are currently running in Offline Sandbox Mode. Sign in with a registered email to enable real-time cloud data entries.</p>
             
             <button 
               onClick={onLogout}
