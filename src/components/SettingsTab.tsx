@@ -46,6 +46,7 @@ interface SettingsTabProps {
   onDeleteEmployee?: (id: string) => Promise<void>;
   onLogin: () => void;
   onLogout: () => void;
+  onSyncLocalToFirestore?: () => Promise<void>;
   backupMetadata: BackupMetadata;
   onTriggerBackup: () => Promise<void>;
   onTriggerRestore: (fileId: string) => Promise<void>;
@@ -64,6 +65,7 @@ export default function SettingsTab({
   onDeleteEmployee,
   onLogin,
   onLogout,
+  onSyncLocalToFirestore,
   backupMetadata,
   onTriggerBackup,
   onTriggerRestore,
@@ -354,7 +356,37 @@ export default function SettingsTab({
         )}
       </div>
 
-      {/* Account Credentials & Password Management */}
+      {/* Firebase Cloud Database Sync Card */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Database size={16} className="text-amber-600" />
+            <div>
+              <h3 className="text-xs font-bold text-slate-800">Firebase Cloud Database</h3>
+              <p className="text-[10px] text-slate-400 font-medium">Project: <span className="font-mono text-slate-600 font-bold">kashif-603d3</span></p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${user ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500'}`}>
+            {user ? 'Authenticated' : 'Offline Mode'}
+          </span>
+        </div>
+
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          {user 
+            ? 'Your account is connected to Firebase. Any drivers or records created in the app can be synchronized directly to your Cloud Firestore database.'
+            : 'You are using Offline Mode. Sign in to sync your local drivers and transport records to Firebase.'}
+        </p>
+
+        {user && onSyncLocalToFirestore && (
+          <button
+            onClick={() => onSyncLocalToFirestore()}
+            className="w-full border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
+          >
+            <CloudLightning size={14} className="text-blue-600 animate-bounce" />
+            <span>Upload & Sync All Local Data to Firebase Cloud</span>
+          </button>
+        )}
+      </div>
       {user && (
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">

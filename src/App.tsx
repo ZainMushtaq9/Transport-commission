@@ -93,15 +93,27 @@ import {
 } from './types';
 import { syncEngine } from './utils/syncEngine';
 
-const cleanForFirestore = <T extends Record<string, any>>(obj: T): T => {
-  if (!obj || typeof obj !== 'object') return obj;
-  const cleaned: any = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      cleaned[key] = value;
-    }
+const cleanForFirestore = (obj: any): any => {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => (typeof item === 'object' && item !== null ? cleanForFirestore(item) : item));
   }
-  return cleaned;
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        if (typeof value === 'object' && value !== null) {
+          cleaned[key] = cleanForFirestore(value);
+        } else {
+          cleaned[key] = value;
+        }
+      }
+    }
+    return cleaned;
+  }
+  return obj;
 };
 
 export default function App() {
@@ -401,6 +413,7 @@ export default function App() {
 
             for (const [colName, list] of Object.entries(batchToSync)) {
               for (const item of list as any[]) {
+                if (!item || !item.id) continue;
                 const docRef = doc(db, colName, item.id);
                 await setDoc(docRef, cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
               }
@@ -739,6 +752,10 @@ export default function App() {
 
   // Helper to sync local data elements to Firestore collections
   const syncLocalToFirestore = async () => {
+    if (!user) {
+      alert("Please sign in with Google or Email first to push data to your Firebase Cloud Database.");
+      return;
+    }
     try {
       const collectionsToSync = {
         drivers,
@@ -751,14 +768,20 @@ export default function App() {
         notifications
       };
 
+      let totalSynced = 0;
       for (const [colName, list] of Object.entries(collectionsToSync)) {
-        for (const item of list) {
+        for (const item of list as any[]) {
+          if (!item.id) continue;
           const docRef = doc(db, colName, item.id);
-          await setDoc(docRef, { ...item, userId: user.uid }, { merge: true });
+          await setDoc(docRef, cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
+          totalSynced++;
         }
       }
-    } catch (err) {
+      addNotification('Firestore Cloud Synced', `Uploaded ${totalSynced} items to Firebase project kashif-603d3.`);
+      alert(`Success! Synced ${totalSynced} records to your Firebase Cloud project (kashif-603d3). Check your Firebase Console now.`);
+    } catch (err: any) {
       console.error('Failed syncing local changes to Firestore:', err);
+      alert(`Firestore Sync Error: ${err?.message || err}`);
     }
   };
 
@@ -1824,6 +1847,7 @@ export default function App() {
             onDeleteEmployee={handleDeleteEmployee}
             onLogin={handleLinkGoogle} 
             onLogout={handleLogout}
+            onSyncLocalToFirestore={syncLocalToFirestore}
             backupMetadata={backupMetadata}
             onTriggerBackup={handleTriggerBackup}
             onTriggerRestore={handleTriggerRestore}
