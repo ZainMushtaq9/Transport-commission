@@ -13,6 +13,7 @@ import {
   Truck, 
   Building2, 
   Users, 
+  UserCheck,
   AlertTriangle, 
   PieChart, 
   CheckCircle2, 
@@ -41,6 +42,7 @@ type ReportType =
   | 'expenses'
   | 'orders'
   | 'drivers'
+  | 'driver_profiles'
   | 'vehicles'
   | 'commissions'
   | 'factories'
@@ -212,6 +214,24 @@ export default function ReportsTab({
           comm
         ];
       });
+    } else if (reportType === 'driver_profiles') {
+      title = 'Driver Full Profiles Data (No Images)';
+      headers = ['Driver Name', 'Father Name', 'Primary Phone', 'WhatsApp / Alt Phone', 'CNIC Number', 'Address', 'Guarantor Name', 'Guarantor Phone', 'Guarantor Address', 'Registered Date', 'Notes'];
+      rows = drivers
+        .filter(d => selectedDriver === 'all' || d.id === selectedDriver)
+        .map(d => [
+          d.fullName || 'N/A',
+          d.fatherName || 'N/A',
+          d.phoneNumber || d.driverPhone1 || 'N/A',
+          d.whatsAppNumber || d.driverPhone2 || 'N/A',
+          d.cnicNumber || 'N/A',
+          d.address || d.driverAddress || 'N/A',
+          d.guarantorName || 'N/A',
+          d.guarantorPhone || 'N/A',
+          d.guarantorAddress || 'N/A',
+          d.createdAt ? d.createdAt.split('T')[0] : 'N/A',
+          d.notes || ''
+        ]);
     } else if (reportType === 'vehicles') {
       title = 'Vehicle Fleet Utilization';
       headers = ['Registration No', 'Type', 'Capacity (Tons)', 'Assigned Driver', 'Fitness Expiry', 'Token Expiry', 'Total Trips'];
@@ -403,6 +423,7 @@ export default function ReportsTab({
               { id: 'expenses', label: 'Expenses Report', icon: TrendingUp },
               { id: 'orders', label: 'Orders & Bookings', icon: Briefcase },
               { id: 'drivers', label: 'Driver Report', icon: Users },
+              { id: 'driver_profiles', label: 'Driver Profiles (No Images)', icon: UserCheck },
               { id: 'vehicles', label: 'Vehicle Fleet', icon: Truck },
               { id: 'commissions', label: 'Commission Ledger', icon: BarChart3 },
               { id: 'factories', label: 'Factory Partners', icon: Building2 },
@@ -667,9 +688,17 @@ export default function ReportsTab({
 
         {reportType === 'drivers' && (
           <div className="space-y-3">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Users size={16} className="text-blue-600" /> Driver Performance Ledger
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Users size={16} className="text-blue-600" /> Driver Performance Ledger
+              </h3>
+              <button
+                onClick={() => setReportType('driver_profiles')}
+                className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"
+              >
+                <UserCheck size={14} /> Download Drivers Profiles (Without Images) &rarr;
+              </button>
+            </div>
 
             <div className="overflow-x-auto rounded-2xl border border-slate-100">
               <table className="w-full text-left text-xs">
@@ -700,6 +729,83 @@ export default function ReportsTab({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {reportType === 'driver_profiles' && (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <UserCheck size={18} className="text-blue-600" /> Drivers Profile Text Data (Without Images)
+                </h3>
+                <p className="text-[11px] text-slate-600 mt-1">
+                  Full text record including CNIC numbers, father names, primary and WhatsApp contacts, residential addresses, and guarantor details. Perfect for lightweight PDF/Excel/CSV downloads.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleExportPDF}
+                  className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 active:scale-95"
+                >
+                  <FileText size={13} /> Export PDF
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 active:scale-95"
+                >
+                  <FileSpreadsheet size={13} /> Export Excel
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
+                  <tr>
+                    <th className="p-3">Driver Name</th>
+                    <th className="p-3">Father Name</th>
+                    <th className="p-3">Phone Numbers</th>
+                    <th className="p-3">CNIC Number</th>
+                    <th className="p-3">Address</th>
+                    <th className="p-3">Guarantor Info</th>
+                    <th className="p-3">Registration Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {drivers
+                    .filter(d => selectedDriver === 'all' || d.id === selectedDriver)
+                    .map(d => (
+                      <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 font-bold text-slate-900">{d.fullName}</td>
+                        <td className="p-3">{d.fatherName || 'N/A'}</td>
+                        <td className="p-3 font-mono text-[11px]">
+                          <div>{d.phoneNumber || d.driverPhone1 || 'N/A'}</div>
+                          {(d.whatsAppNumber || d.driverPhone2) && (
+                            <div className="text-[10px] text-emerald-600 font-sans">WA: {d.whatsAppNumber || d.driverPhone2}</div>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px] font-bold text-blue-600">{d.cnicNumber || 'N/A'}</td>
+                        <td className="p-3 max-w-xs">{d.address || d.driverAddress || 'N/A'}</td>
+                        <td className="p-3 text-[11px]">
+                          {d.guarantorName ? (
+                            <div>
+                              <span className="font-bold text-slate-800">{d.guarantorName}</span>
+                              {d.guarantorPhone && <span className="text-[10px] text-slate-500 block">Ph: {d.guarantorPhone}</span>}
+                              {d.guarantorAddress && <span className="text-[10px] text-slate-400 block truncate max-w-xs">{d.guarantorAddress}</span>}
+                            </div>
+                          ) : (
+                            'N/A'
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[10px] text-slate-500">
+                          {d.createdAt ? d.createdAt.split('T')[0] : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
