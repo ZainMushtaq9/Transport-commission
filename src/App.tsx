@@ -488,18 +488,32 @@ export default function App() {
       id,
       fullName: empData.fullName,
       email: empData.email,
-      phone: empData.phone,
-      role: empData.role,
-      status: empData.status,
-      permissions: empData.permissions,
+      password: empData.password || '',
+      phone: empData.phone || '',
+      role: empData.role || 'Employee',
+      status: empData.status || 'Active',
+      permissions: empData.permissions || {
+        orders: true,
+        drivers: true,
+        earnings: true,
+        expenses: true,
+        reports: true,
+        settings: false
+      },
       adminUserId: user?.uid || 'offline_admin',
       createdAt: new Date().toISOString()
     };
     const updatedList = [newEmp, ...employees];
     setEmployees(updatedList);
     saveLocalData('tcm_employees', updatedList);
+    addNotification('Employee Registered', `Created employee account for ${newEmp.fullName} (${newEmp.email}).`);
+
     if (user?.uid) {
-      await saveEmployeeToFirestore(newEmp);
+      try {
+        await saveEmployeeToFirestore(newEmp);
+      } catch (err) {
+        console.error('Firestore save employee error:', err);
+      }
     }
   };
 

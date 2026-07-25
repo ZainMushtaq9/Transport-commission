@@ -333,9 +333,10 @@ export const saveEmployeeToFirestore = async (employeeData: any): Promise<void> 
   if (!isFirebaseConfigured || !db) return;
   try {
     const docRef = doc(db, 'employees', employeeData.id);
-    await setDoc(docRef, employeeData, { merge: true });
+    const cleaned = JSON.parse(JSON.stringify(employeeData));
+    await setDoc(docRef, cleaned, { merge: true });
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `employees/${employeeData.id}`);
+    console.error('Error saving employee to Firestore:', err);
   }
 };
 

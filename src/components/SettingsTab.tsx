@@ -30,7 +30,11 @@ import {
   Lock,
   Mail,
   Plus,
-  Users
+  Users,
+  Eye,
+  EyeOff,
+  Copy,
+  Check
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { BackupMetadata, Employee } from '../types';
@@ -92,6 +96,8 @@ export default function SettingsTab({
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [empFullName, setEmpFullName] = useState('');
   const [empEmail, setEmpEmail] = useState('');
+  const [empPassword, setEmpPassword] = useState('');
+  const [showEmpPassword, setShowEmpPassword] = useState(false);
   const [empPhone, setEmpPhone] = useState('');
   const [empRole, setEmpRole] = useState<'Admin' | 'Employee'>('Employee');
   const [empStatus, setEmpStatus] = useState<'Active' | 'Disabled'>('Active');
@@ -104,6 +110,8 @@ export default function SettingsTab({
     settings: false
   });
   const [empLoading, setEmpLoading] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Handle password change
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -155,27 +163,40 @@ export default function SettingsTab({
   // Handle Employee Modal Save
   const handleSaveEmployeeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!empFullName || !empEmail) return;
+    if (!empFullName.trim() || !empEmail.trim()) {
+      alert('Please fill in employee full name and email address.');
+      return;
+    }
+    if (!editingEmployee && !empPassword.trim()) {
+      alert('Please enter a login password for the new employee.');
+      return;
+    }
+
     setEmpLoading(true);
 
     try {
       if (editingEmployee) {
         if (onUpdateEmployee) {
-          await onUpdateEmployee(editingEmployee.id, {
-            fullName: empFullName,
-            email: empEmail,
-            phone: empPhone,
+          const updates: Partial<Employee> = {
+            fullName: empFullName.trim(),
+            email: empEmail.trim(),
+            phone: empPhone.trim(),
             role: empRole,
             status: empStatus,
             permissions: empPermissions
-          });
+          };
+          if (empPassword.trim()) {
+            updates.password = empPassword.trim();
+          }
+          await onUpdateEmployee(editingEmployee.id, updates);
         }
       } else {
         if (onSaveEmployee) {
           await onSaveEmployee({
-            fullName: empFullName,
-            email: empEmail,
-            phone: empPhone,
+            fullName: empFullName.trim(),
+            email: empEmail.trim(),
+            password: empPassword.trim(),
+            phone: empPhone.trim(),
             role: empRole,
             status: empStatus,
             permissions: empPermissions,
@@ -185,8 +206,9 @@ export default function SettingsTab({
       }
       setShowEmployeeModal(false);
       resetEmployeeForm();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save employee:', err);
+      alert('Error saving employee: ' + (err?.message || 'Unknown error'));
     } finally {
       setEmpLoading(false);
     }
@@ -196,6 +218,8 @@ export default function SettingsTab({
     setEditingEmployee(null);
     setEmpFullName('');
     setEmpEmail('');
+    setEmpPassword('');
+    setShowEmpPassword(false);
     setEmpPhone('');
     setEmpRole('Employee');
     setEmpStatus('Active');
@@ -213,6 +237,8 @@ export default function SettingsTab({
     setEditingEmployee(emp);
     setEmpFullName(emp.fullName);
     setEmpEmail(emp.email);
+    setEmpPassword(emp.password || '');
+    setShowEmpPassword(false);
     setEmpPhone(emp.phone || '');
     setEmpRole(emp.role);
     setEmpStatus(emp.status);
@@ -521,9 +547,9 @@ export default function SettingsTab({
         ) : (
           <div className="space-y-2">
             {employees.map(emp => (
-              <div key={emp.id} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+              <div key={emp.id} className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-xs text-slate-900">{emp.fullName}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                       emp.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
@@ -534,13 +560,51 @@ export default function SettingsTab({
                       {emp.role}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-medium">{emp.email} {emp.phone ? `• ${emp.phone}` : ''}</p>
+                  
+                  <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      <strong>Email:</strong> {emp.email}
+                    </span>
+                    {emp.phone && (
+                      <span>• Phone: {emp.phone}</span>
+                    )}
+                    {emp.password && (
+                      <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                        <KeyRound size={11} className="text-amber-500" />
+                        <span className="font-mono text-slate-700">
+                          {visiblePasswords[emp.id] ? emp.password : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setVisiblePasswords(prev => ({ ...prev, [emp.id]: !prev[emp.id] }))}
+                          className="text-slate-400 hover:text-slate-600 ml-1"
+                          title="Toggle password view"
+                        >
+                          {visiblePasswords[emp.id] ? <EyeOff size={11} /> : <Eye size={11} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`Email: ${emp.email}\nPassword: ${emp.password}`);
+                            setCopiedId(emp.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                          className="text-slate-400 hover:text-blue-600 ml-0.5"
+                          title="Copy login credentials"
+                        >
+                          {copiedId === emp.id ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Permissions Pills */}
                   <div className="flex flex-wrap gap-1 pt-1">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider self-center mr-1">Modules:</span>
                     {Object.entries(emp.permissions || {}).map(([key, allowed]) => (
                       <span key={key} className={`px-2 py-0.5 rounded-md text-[9px] font-bold capitalize ${
-                        allowed ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400 line-through'
+                        allowed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400 line-through'
                       }`}>
                         {key}
                       </span>
@@ -548,10 +612,10 @@ export default function SettingsTab({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end md:self-center">
+                <div className="flex items-center gap-2 self-end md:self-center shrink-0">
                   <button
                     onClick={() => openEditEmployee(emp)}
-                    className="p-1.5 bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                    className="p-1.5 bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-2xs"
                   >
                     <Edit3 size={12} /> Edit
                   </button>
@@ -563,7 +627,7 @@ export default function SettingsTab({
                       }
                     }}
                     className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      emp.status === 'Active' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      emp.status === 'Active' ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                     }`}
                   >
                     {emp.status === 'Active' ? 'Disable' : 'Enable'}
@@ -577,6 +641,7 @@ export default function SettingsTab({
                         }
                       }}
                       className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all"
+                      title="Delete account"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -609,27 +674,55 @@ export default function SettingsTab({
 
             <form onSubmit={handleSaveEmployeeSubmit} className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Name *</label>
                 <input
                   type="text"
                   required
                   value={empFullName}
                   onChange={(e) => setEmpFullName(e.target.value)}
                   placeholder="e.g. Ali Khan"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500 font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Email Address (Login Username)</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Email Address (Login Username) *</label>
                 <input
                   type="email"
                   required
                   value={empEmail}
                   onChange={(e) => setEmpEmail(e.target.value)}
                   placeholder="employee@transport.com"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500 font-medium"
                 />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block">
+                    Login Password {!editingEmployee ? '*' : '(Leave blank to keep unchanged)'}
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showEmpPassword ? 'text' : 'password'}
+                    required={!editingEmployee}
+                    value={empPassword}
+                    onChange={(e) => setEmpPassword(e.target.value)}
+                    placeholder={editingEmployee ? 'Enter new password if changing' : 'Create login password'}
+                    className="w-full p-2.5 pr-9 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEmpPassword(!showEmpPassword)}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    {showEmpPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-[9px] text-slate-400 mt-1">
+                  Employee will use this email and password to log in.
+                </p>
               </div>
 
               <div>
@@ -649,7 +742,7 @@ export default function SettingsTab({
                   <select
                     value={empRole}
                     onChange={(e) => setEmpRole(e.target.value as 'Admin' | 'Employee')}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden font-medium"
                   >
                     <option value="Employee">Employee</option>
                     <option value="Admin">Administrator</option>
@@ -661,7 +754,7 @@ export default function SettingsTab({
                   <select
                     value={empStatus}
                     onChange={(e) => setEmpStatus(e.target.value as 'Active' | 'Disabled')}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden font-medium"
                   >
                     <option value="Active">Active</option>
                     <option value="Disabled">Disabled</option>
@@ -670,8 +763,28 @@ export default function SettingsTab({
               </div>
 
               {/* Granular Module Permissions */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Module Permissions</label>
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Module Permissions</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmpPermissions({ orders: true, drivers: true, earnings: true, expenses: true, reports: true, settings: true })}
+                      className="text-[9px] font-bold text-blue-600 hover:underline"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-[9px] text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setEmpPermissions({ orders: false, drivers: false, earnings: false, expenses: false, reports: false, settings: false })}
+                      className="text-[9px] font-bold text-slate-400 hover:underline"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {[
                     { id: 'orders', label: 'Dispatch Orders' },
@@ -681,36 +794,45 @@ export default function SettingsTab({
                     { id: 'reports', label: 'Reports Module' },
                     { id: 'settings', label: 'System Settings' },
                   ].map(perm => (
-                    <label key={perm.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100">
+                    <label key={perm.id} className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all border ${
+                      (empPermissions as any)[perm.id] ? 'bg-blue-50/60 border-blue-200 text-blue-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-500'
+                    }`}>
                       <input
                         type="checkbox"
                         checked={(empPermissions as any)[perm.id]}
                         onChange={(e) => setEmpPermissions({ ...empPermissions, [perm.id]: e.target.checked })}
                         className="rounded text-blue-600 focus:ring-0"
                       />
-                      <span className="text-slate-700 font-semibold text-[11px]">{perm.label}</span>
+                      <span className="text-[11px]">{perm.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEmployeeModal(false);
                     resetEmployeeForm();
                   }}
-                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={empLoading}
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 transition-all flex items-center justify-center gap-1.5"
                 >
-                  {empLoading ? 'Saving...' : editingEmployee ? 'Update Account' : 'Create Account'}
+                  {empLoading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>{editingEmployee ? 'Update Account' : 'Create Account'}</span>
+                  )}
                 </button>
               </div>
             </form>

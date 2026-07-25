@@ -153,6 +153,7 @@ export interface Employee {
   id: string;
   fullName: string;
   email: string;
+  password?: string;
   phone?: string;
   role: 'Admin' | 'Employee';
   status: 'Active' | 'Disabled';
