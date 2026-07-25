@@ -92,28 +92,10 @@ import {
   Employee
 } from './types';
 import { syncEngine } from './utils/syncEngine';
+import { prepareForFirestore } from './utils/imageCompressor';
 
-const cleanForFirestore = (obj: any): any => {
-  if (obj === null || obj === undefined) return null;
-  if (Array.isArray(obj)) {
-    return obj
-      .filter(item => item !== undefined)
-      .map(item => (typeof item === 'object' && item !== null ? cleanForFirestore(item) : item));
-  }
-  if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) {
-        if (typeof value === 'object' && value !== null) {
-          cleaned[key] = cleanForFirestore(value);
-        } else {
-          cleaned[key] = value;
-        }
-      }
-    }
-    return cleaned;
-  }
-  return obj;
+const cleanForFirestore = async (obj: any): Promise<any> => {
+  return await prepareForFirestore(obj, 400000);
 };
 
 export default function App() {
@@ -415,7 +397,7 @@ export default function App() {
               for (const item of list as any[]) {
                 if (!item || !item.id) continue;
                 const docRef = doc(db, colName, item.id);
-                await setDoc(docRef, cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
+                await setDoc(docRef, await cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
               }
             }
             console.log('Local state successfully uploaded to Firestore!');
@@ -773,7 +755,7 @@ export default function App() {
         for (const item of list as any[]) {
           if (!item.id) continue;
           const docRef = doc(db, colName, item.id);
-          await setDoc(docRef, cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
+          await setDoc(docRef, await cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
           totalSynced++;
         }
       }
@@ -838,7 +820,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'notifications', notif.id), cleanForFirestore(notif));
+        await setDoc(doc(db, 'notifications', notif.id), await cleanForFirestore(notif));
       } catch (err) {
         console.error('Firestore notif save error:', err);
       }
@@ -846,12 +828,14 @@ export default function App() {
   };
 
   const handleAddDriver = async (driverInput: Omit<Driver, 'id' | 'createdAt'>) => {
-    const newDriver: Driver = {
+    const rawDriver: Driver = {
       ...driverInput,
       id: 'drv-' + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       userId: user?.uid
     };
+
+    const newDriver = await cleanForFirestore(rawDriver);
 
     const updated = [...drivers, newDriver];
     setDrivers(updated);
@@ -859,7 +843,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'drivers', newDriver.id), cleanForFirestore(newDriver));
+        await setDoc(doc(db, 'drivers', newDriver.id), newDriver);
       } catch (err) {
         console.error('Firestore driver save error:', err);
       }
@@ -870,12 +854,14 @@ export default function App() {
   };
 
   const handleAddVehicle = async (vehicleInput: Omit<Vehicle, 'id' | 'createdAt'>) => {
-    const newVehicle: Vehicle = {
+    const rawVehicle: Vehicle = {
       ...vehicleInput,
       id: 'veh-' + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       userId: user?.uid
     };
+
+    const newVehicle = await cleanForFirestore(rawVehicle);
 
     const updated = [...vehicles, newVehicle];
     setVehicles(updated);
@@ -883,7 +869,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'vehicles', newVehicle.id), cleanForFirestore(newVehicle));
+        await setDoc(doc(db, 'vehicles', newVehicle.id), newVehicle);
       } catch (err) {
         console.error('Firestore vehicle save error:', err);
       }
@@ -894,7 +880,8 @@ export default function App() {
   };
 
   const handleUpdateDriver = async (id: string, driverInput: Partial<Omit<Driver, 'id' | 'createdAt'>>) => {
-    const updated = drivers.map(d => d.id === id ? { ...d, ...driverInput } as Driver : d);
+    const cleanedInput = await cleanForFirestore(driverInput);
+    const updated = drivers.map(d => d.id === id ? { ...d, ...cleanedInput } as Driver : d);
     setDrivers(updated);
     saveLocalData('tcm_drivers', updated);
 
@@ -902,7 +889,8 @@ export default function App() {
       const existing = drivers.find(d => d.id === id);
       if (existing) {
         try {
-          await setDoc(doc(db, 'drivers', id), cleanForFirestore({ ...existing, ...driverInput, userId: user.uid }), { merge: true });
+          const docData = await cleanForFirestore({ ...existing, ...driverInput, userId: user.uid });
+          await setDoc(doc(db, 'drivers', id), docData, { merge: true });
         } catch (err) {
           console.error('Firestore driver update error:', err);
         }
@@ -914,7 +902,8 @@ export default function App() {
   };
 
   const handleUpdateVehicle = async (id: string, vehicleInput: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => {
-    const updated = vehicles.map(v => v.id === id ? { ...v, ...vehicleInput } as Vehicle : v);
+    const cleanedInput = await cleanForFirestore(vehicleInput);
+    const updated = vehicles.map(v => v.id === id ? { ...v, ...cleanedInput } as Vehicle : v);
     setVehicles(updated);
     saveLocalData('tcm_vehicles', updated);
 
@@ -922,7 +911,8 @@ export default function App() {
       const existing = vehicles.find(v => v.id === id);
       if (existing) {
         try {
-          await setDoc(doc(db, 'vehicles', id), cleanForFirestore({ ...existing, ...vehicleInput, userId: user.uid }), { merge: true });
+          const docData = await cleanForFirestore({ ...existing, ...vehicleInput, userId: user.uid });
+          await setDoc(doc(db, 'vehicles', id), docData, { merge: true });
         } catch (err) {
           console.error('Firestore vehicle update error:', err);
         }
@@ -981,7 +971,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'factories', newFactory.id), cleanForFirestore(newFactory));
+        await setDoc(doc(db, 'factories', newFactory.id), await cleanForFirestore(newFactory));
       } catch (err) {
         console.error('Firestore factory save error:', err);
       }
@@ -999,7 +989,7 @@ export default function App() {
 
     if (user) {
       try {
-        await updateDoc(doc(db, 'factories', id), cleanForFirestore(factoryInput));
+        await updateDoc(doc(db, 'factories', id), await cleanForFirestore(factoryInput));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `factories/${id}`);
       }
@@ -1040,7 +1030,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'customers', newCustomer.id), cleanForFirestore(newCustomer));
+        await setDoc(doc(db, 'customers', newCustomer.id), await cleanForFirestore(newCustomer));
       } catch (err) {
         console.error('Firestore customer save error:', err);
       }
@@ -1058,7 +1048,7 @@ export default function App() {
 
     if (user) {
       try {
-        await updateDoc(doc(db, 'customers', id), cleanForFirestore(customerInput));
+        await updateDoc(doc(db, 'customers', id), await cleanForFirestore(customerInput));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `customers/${id}`);
       }
@@ -1120,8 +1110,8 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'bookings', newBooking.id), cleanForFirestore(newBooking));
-        await setDoc(doc(db, 'commissions', newCommission.id), cleanForFirestore(newCommission));
+        await setDoc(doc(db, 'bookings', newBooking.id), await cleanForFirestore(newBooking));
+        await setDoc(doc(db, 'commissions', newCommission.id), await cleanForFirestore(newCommission));
       } catch (err) {
         console.error('Firestore booking/commission save error:', err);
       }
@@ -1155,7 +1145,7 @@ export default function App() {
 
     if (user) {
       try {
-        await updateDoc(doc(db, 'bookings', id), cleanForFirestore({ status }));
+        await updateDoc(doc(db, 'bookings', id), await cleanForFirestore({ status }));
       } catch (err) {
         console.error('Firestore booking status update error:', err);
       }
@@ -1172,7 +1162,7 @@ export default function App() {
 
     if (user) {
       try {
-        await updateDoc(doc(db, 'bookings', id), cleanForFirestore(updatedFields));
+        await updateDoc(doc(db, 'bookings', id), await cleanForFirestore(updatedFields));
       } catch (err) {
         console.error('Firestore booking update error:', err);
       }
@@ -1193,7 +1183,7 @@ export default function App() {
           setCommissions(updatedComms);
           saveLocalData('tcm_commissions', updatedComms);
           try {
-            await updateDoc(doc(db, 'commissions', commToUpdate.id), cleanForFirestore(commissionUpdate));
+            await updateDoc(doc(db, 'commissions', commToUpdate.id), await cleanForFirestore(commissionUpdate));
           } catch (err) {
             console.error('Firestore commission update error:', err);
           }
@@ -1257,7 +1247,7 @@ export default function App() {
       const targetComm = commissions.find(c => c.bookingId === bookingId);
       if (targetComm) {
         try {
-          await updateDoc(doc(db, 'commissions', targetComm.id), cleanForFirestore({ paymentStatus: newStatus }));
+          await updateDoc(doc(db, 'commissions', targetComm.id), await cleanForFirestore({ paymentStatus: newStatus }));
         } catch (err) {
           console.error('Firestore update commission status error:', err);
         }
@@ -1282,7 +1272,7 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'expenses', newExpense.id), cleanForFirestore(newExpense));
+        await setDoc(doc(db, 'expenses', newExpense.id), await cleanForFirestore(newExpense));
       } catch (err) {
         console.error('Firestore expense save error:', err);
       }

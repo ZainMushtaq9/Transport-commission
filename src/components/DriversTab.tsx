@@ -28,6 +28,7 @@ import {
   Share2
 } from 'lucide-react';
 import { Driver, Vehicle } from '../types';
+import { compressFile } from '../utils/imageCompressor';
 
 interface DriversTabProps {
   drivers: Driver[];
@@ -179,19 +180,27 @@ export default function DriversTab({
     setShowAddVehicle(false);
   };
 
-  // Helper: File To Base64 Reader
-  const handleFileChange = (
+  // Helper: File To Compressed Base64 Reader
+  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>, 
     setter: (val: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setter(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Compress photo image to max 400KB base64 string length to strictly fit Firestore's 1MB limit
+      const compressedBase64 = await compressFile(file, 400000);
+      setter(compressedBase64);
+    } catch (err) {
+      console.error("Failed image compression:", err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setter(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Duplicate checks programmatically
