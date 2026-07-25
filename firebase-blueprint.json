@@ -146,6 +146,23 @@
         "userId": { "type": "string" }
       },
       "required": ["id", "title", "message", "date", "read", "userId"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Represents an employee user account managed by the main administrator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "permissions": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "adminUserId": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "adminUserId"]
     }
   },
   "firestore": {
@@ -180,6 +197,10 @@
     "notifications/{notificationId}": {
       "schema": "NotificationRef",
       "description": "User's custom workspace activity feeds"
+    },
+    "employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Organization employee user sub-accounts"
     }
   }
 }

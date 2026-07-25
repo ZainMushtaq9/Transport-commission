@@ -14,29 +14,44 @@ import {
   Users, 
   X, 
   Share2, 
+  User,
+  Truck,
   CheckCircle2, 
   AlertCircle 
 } from 'lucide-react';
-import { Factory, Customer } from '../types';
+import { Factory, Customer, Driver, Vehicle } from '../types';
+import DriversTab from './DriversTab';
 
 interface DirectoryTabProps {
+  drivers: Driver[];
+  vehicles: Vehicle[];
   factories: Factory[];
   customers: Customer[];
   accessToken: string | null;
+  onAddDriver: (driver: Omit<Driver, 'id' | 'createdAt'>) => void;
+  onAddVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => void;
+  onUpdateDriver?: (id: string, driver: Partial<Omit<Driver, 'id' | 'createdAt'>>) => void;
+  onUpdateVehicle?: (id: string, vehicle: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => void;
   onAddFactory: (factory: Omit<Factory, 'id' | 'createdAt'>) => void;
   onAddCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => void;
   onSyncContact: (fullName: string, phoneNumber: string, role: 'Driver' | 'Factory Manager' | 'Customer Warehouse Manager') => Promise<void>;
 }
 
 export default function DirectoryTab({
-  factories,
-  customers,
+  drivers = [],
+  vehicles = [],
+  factories = [],
+  customers = [],
   accessToken,
+  onAddDriver,
+  onAddVehicle,
+  onUpdateDriver,
+  onUpdateVehicle,
   onAddFactory,
   onAddCustomer,
   onSyncContact
 }: DirectoryTabProps) {
-  const [subTab, setSubTab] = useState<'factories' | 'customers'>('factories');
+  const [subTab, setSubTab] = useState<'drivers' | 'factories' | 'customers'>('drivers');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [showAddFactory, setShowAddFactory] = useState(false);
@@ -142,7 +157,20 @@ export default function DirectoryTab({
   return (
     <div className="space-y-4 pb-24 animate-fadeIn" id="directory_tab_view">
       {/* Subtab navigation */}
-      <div className="flex bg-slate-100 p-1 rounded-xl">
+      <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+        <button
+          onClick={() => {
+            setSubTab('drivers');
+            setSearchQuery('');
+          }}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            subTab === 'drivers'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <Truck size={14} /> Drivers & Fleet ({drivers.length})
+        </button>
         <button
           onClick={() => {
             setSubTab('factories');
@@ -171,33 +199,44 @@ export default function DirectoryTab({
         </button>
       </div>
 
-      {/* Search and Action bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={subTab === 'factories' ? 'Search factory or manager...' : 'Search warehouse or city...'}
-            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-100 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
-          />
-        </div>
+      {subTab === 'drivers' ? (
+        <DriversTab
+          drivers={drivers}
+          vehicles={vehicles}
+          onAddDriver={onAddDriver}
+          onAddVehicle={onAddVehicle}
+          onUpdateDriver={onUpdateDriver}
+          onUpdateVehicle={onUpdateVehicle}
+        />
+      ) : (
+        <>
+          {/* Search and Action bar */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={subTab === 'factories' ? 'Search factory or manager...' : 'Search warehouse or city...'}
+                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-100 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+              />
+            </div>
 
-        <button
-          onClick={() => {
-            if (subTab === 'factories') setShowAddFactory(true);
-            else setShowAddCustomer(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-        >
-          <Plus size={14} /> Add New
-        </button>
-      </div>
+            <button
+              onClick={() => {
+                if (subTab === 'factories') setShowAddFactory(true);
+                else setShowAddCustomer(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Add New
+            </button>
+          </div>
 
-      {/* Directory Item Lists */}
-      <div className="space-y-3">
-        {subTab === 'factories' ? (
+          {/* Directory Item Lists */}
+          <div className="space-y-3">
+            {subTab === 'factories' ? (
           filteredFactories.length === 0 ? (
             <div className="bg-white rounded-2xl p-6 text-center text-slate-400 text-xs border border-slate-100">
               No factories listed yet. Tap "Add New" to index a sourcing partner.
@@ -281,6 +320,8 @@ export default function DirectoryTab({
           )
         )}
       </div>
+      </>
+      )}
 
       {/* Add Factory Dialog modal */}
       {showAddFactory && createPortal(

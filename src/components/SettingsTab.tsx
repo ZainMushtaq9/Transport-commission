@@ -20,15 +20,30 @@ import {
   LogIn,
   Activity,
   Wifi,
-  WifiOff
+  WifiOff,
+  UserCheck,
+  Shield,
+  KeyRound,
+  UserPlus,
+  Trash2,
+  Edit3,
+  Lock,
+  Mail,
+  Plus,
+  Users
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { BackupMetadata } from '../types';
+import { BackupMetadata, Employee } from '../types';
 import { syncEngine, ActivityLog } from '../utils/syncEngine';
+import { changeCurrentUserPassword, changeCurrentUserEmail } from '../firebase';
 
 interface SettingsTabProps {
   user: User | null;
   accessToken: string | null;
+  employees?: Employee[];
+  onSaveEmployee?: (employee: any) => Promise<void>;
+  onUpdateEmployee?: (id: string, updates: Partial<Employee>) => Promise<void>;
+  onDeleteEmployee?: (id: string) => Promise<void>;
   onLogin: () => void;
   onLogout: () => void;
   backupMetadata: BackupMetadata;
@@ -43,6 +58,10 @@ interface SettingsTabProps {
 export default function SettingsTab({
   user,
   accessToken,
+  employees = [],
+  onSaveEmployee,
+  onUpdateEmployee,
+  onDeleteEmployee,
   onLogin,
   onLogout,
   backupMetadata,
@@ -55,6 +74,156 @@ export default function SettingsTab({
 }: SettingsTabProps) {
   const [driveBackups, setDriveBackups] = useState<Array<{ id: string; name: string; createdTime: string; size?: string }>>([]);
   const [fetchingBackups, setFetchingBackups] = useState(false);
+  
+  // Security Password & Email Update State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passLoading, setPassLoading] = useState(false);
+  const [passMsg, setPassMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [newEmail, setNewEmail] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Employee Management State
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [empFullName, setEmpFullName] = useState('');
+  const [empEmail, setEmpEmail] = useState('');
+  const [empPhone, setEmpPhone] = useState('');
+  const [empRole, setEmpRole] = useState<'Admin' | 'Employee'>('Employee');
+  const [empStatus, setEmpStatus] = useState<'Active' | 'Disabled'>('Active');
+  const [empPermissions, setEmpPermissions] = useState({
+    orders: true,
+    drivers: true,
+    earnings: true,
+    expenses: true,
+    reports: true,
+    settings: false
+  });
+  const [empLoading, setEmpLoading] = useState(false);
+
+  // Handle password change
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassMsg(null);
+    if (newPassword !== confirmNewPassword) {
+      setPassMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPassMsg({ type: 'error', text: 'Password must be at least 6 characters long.' });
+      return;
+    }
+    setPassLoading(true);
+    try {
+      await changeCurrentUserPassword(newPassword);
+      setPassMsg({ type: 'success', text: 'Password updated successfully!' });
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      console.error(err);
+      setPassMsg({ type: 'error', text: err.message || 'Failed to update password.' });
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
+  // Handle email change
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailMsg(null);
+    if (!newEmail || !newEmail.includes('@')) {
+      setEmailMsg({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      await changeCurrentUserEmail(newEmail);
+      setEmailMsg({ type: 'success', text: 'Email address updated successfully!' });
+      setNewEmail('');
+    } catch (err: any) {
+      console.error(err);
+      setEmailMsg({ type: 'error', text: err.message || 'Failed to update email. Re-authentication may be required.' });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // Handle Employee Modal Save
+  const handleSaveEmployeeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!empFullName || !empEmail) return;
+    setEmpLoading(true);
+
+    try {
+      if (editingEmployee) {
+        if (onUpdateEmployee) {
+          await onUpdateEmployee(editingEmployee.id, {
+            fullName: empFullName,
+            email: empEmail,
+            phone: empPhone,
+            role: empRole,
+            status: empStatus,
+            permissions: empPermissions
+          });
+        }
+      } else {
+        if (onSaveEmployee) {
+          await onSaveEmployee({
+            fullName: empFullName,
+            email: empEmail,
+            phone: empPhone,
+            role: empRole,
+            status: empStatus,
+            permissions: empPermissions,
+            adminUserId: user?.uid || 'offline_admin'
+          });
+        }
+      }
+      setShowEmployeeModal(false);
+      resetEmployeeForm();
+    } catch (err) {
+      console.error('Failed to save employee:', err);
+    } finally {
+      setEmpLoading(false);
+    }
+  };
+
+  const resetEmployeeForm = () => {
+    setEditingEmployee(null);
+    setEmpFullName('');
+    setEmpEmail('');
+    setEmpPhone('');
+    setEmpRole('Employee');
+    setEmpStatus('Active');
+    setEmpPermissions({
+      orders: true,
+      drivers: true,
+      earnings: true,
+      expenses: true,
+      reports: true,
+      settings: false
+    });
+  };
+
+  const openEditEmployee = (emp: Employee) => {
+    setEditingEmployee(emp);
+    setEmpFullName(emp.fullName);
+    setEmpEmail(emp.email);
+    setEmpPhone(emp.phone || '');
+    setEmpRole(emp.role);
+    setEmpStatus(emp.status);
+    setEmpPermissions(emp.permissions || {
+      orders: true,
+      drivers: true,
+      earnings: true,
+      expenses: true,
+      reports: true,
+      settings: false
+    });
+    setShowEmployeeModal(true);
+  };
   
   // Report Generator Selection
   const [selectedReportType, setSelectedReportType] = useState('commission');
@@ -134,7 +303,7 @@ export default function SettingsTab({
                   className="w-10 h-10 rounded-full border border-slate-200"
                 />
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800">{user.displayName}</h4>
+                  <h4 className="text-xs font-bold text-slate-800">{user.displayName || 'Main Administrator'}</h4>
                   <p className="text-[10px] text-slate-400 font-medium">{user.email}</p>
                 </div>
               </div>
@@ -184,6 +353,338 @@ export default function SettingsTab({
           </div>
         )}
       </div>
+
+      {/* Account Credentials & Password Management */}
+      {user && (
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <KeyRound size={14} className="text-blue-500" /> Account Credentials & Security
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Change Password Form */}
+            <form onSubmit={handleChangePassword} className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Lock size={14} className="text-slate-500" /> Change Account Password
+              </span>
+
+              {passMsg && (
+                <div className={`p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 ${
+                  passMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                  {passMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                  <span>{passMsg.text}</span>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={passLoading}
+                className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                {passLoading ? 'Updating Password...' : 'Update Password'}
+              </button>
+            </form>
+
+            {/* Change Email Form */}
+            <form onSubmit={handleChangeEmail} className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Mail size={14} className="text-slate-500" /> Update Account Email
+              </span>
+
+              {emailMsg && (
+                <div className={`p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 ${
+                  emailMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                  {emailMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                  <span>{emailMsg.text}</span>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Current Email</label>
+                <input
+                  type="text"
+                  disabled
+                  value={user.email || ''}
+                  className="w-full p-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase">New Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="newemail@transport.com"
+                  className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={emailLoading}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                {emailLoading ? 'Updating Email...' : 'Update Email Address'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Employee Access Management Section (Admin Only) */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Users size={14} className="text-blue-500" /> Employee Access Management
+            </h3>
+            <p className="text-[10px] text-slate-400 font-medium">
+              Create sub-accounts and assign granular module permissions for staff.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              resetEmployeeForm();
+              setShowEmployeeModal(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+          >
+            <Plus size={14} /> Add Employee
+          </button>
+        </div>
+
+        {employees.length === 0 ? (
+          <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed text-slate-400 text-xs">
+            No employee sub-accounts created yet. Click "Add Employee" to grant staff access.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {employees.map(emp => (
+              <div key={emp.id} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-slate-900">{emp.fullName}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                      emp.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {emp.status}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800">
+                      {emp.role}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">{emp.email} {emp.phone ? `• ${emp.phone}` : ''}</p>
+                  
+                  {/* Permissions Pills */}
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {Object.entries(emp.permissions || {}).map(([key, allowed]) => (
+                      <span key={key} className={`px-2 py-0.5 rounded-md text-[9px] font-bold capitalize ${
+                        allowed ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400 line-through'
+                      }`}>
+                        {key}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end md:self-center">
+                  <button
+                    onClick={() => openEditEmployee(emp)}
+                    className="p-1.5 bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                  >
+                    <Edit3 size={12} /> Edit
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (onUpdateEmployee) {
+                        onUpdateEmployee(emp.id, { status: emp.status === 'Active' ? 'Disabled' : 'Active' });
+                      }
+                    }}
+                    className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      emp.status === 'Active' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}
+                  >
+                    {emp.status === 'Active' ? 'Disable' : 'Enable'}
+                  </button>
+
+                  {onDeleteEmployee && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete employee account for ${emp.fullName}?`)) {
+                          onDeleteEmployee(emp.id);
+                        }
+                      }}
+                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Employee Modal Dialog */}
+      {showEmployeeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-sm">
+                {editingEmployee ? 'Edit Employee Account' : 'Register New Employee'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEmployeeModal(false);
+                  resetEmployeeForm();
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEmployeeSubmit} className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={empFullName}
+                  onChange={(e) => setEmpFullName(e.target.value)}
+                  placeholder="e.g. Ali Khan"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Email Address (Login Username)</label>
+                <input
+                  type="email"
+                  required
+                  value={empEmail}
+                  onChange={(e) => setEmpEmail(e.target.value)}
+                  placeholder="employee@transport.com"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={empPhone}
+                  onChange={(e) => setEmpPhone(e.target.value)}
+                  placeholder="0300-1234567"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Role</label>
+                  <select
+                    value={empRole}
+                    onChange={(e) => setEmpRole(e.target.value as 'Admin' | 'Employee')}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                  >
+                    <option value="Employee">Employee</option>
+                    <option value="Admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Status</label>
+                  <select
+                    value={empStatus}
+                    onChange={(e) => setEmpStatus(e.target.value as 'Active' | 'Disabled')}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Granular Module Permissions */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <label className="text-[10px] font-bold text-slate-400 uppercase block">Assign Module Permissions</label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'orders', label: 'Dispatch Orders' },
+                    { id: 'drivers', label: 'Fleet & Drivers' },
+                    { id: 'earnings', label: 'Commissions & Ledger' },
+                    { id: 'expenses', label: 'Expenses' },
+                    { id: 'reports', label: 'Reports Module' },
+                    { id: 'settings', label: 'System Settings' },
+                  ].map(perm => (
+                    <label key={perm.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100">
+                      <input
+                        type="checkbox"
+                        checked={(empPermissions as any)[perm.id]}
+                        onChange={(e) => setEmpPermissions({ ...empPermissions, [perm.id]: e.target.checked })}
+                        className="rounded text-blue-600 focus:ring-0"
+                      />
+                      <span className="text-slate-700 font-semibold text-[11px]">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmployeeModal(false);
+                    resetEmployeeForm();
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={empLoading}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold"
+                >
+                  {empLoading ? 'Saving...' : editingEmployee ? 'Update Account' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Reports Export Generator Module */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-4">

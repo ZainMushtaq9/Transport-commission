@@ -24,7 +24,8 @@ import {
   Database, 
   LogOut,
   LogIn,
-  ClipboardList
+  ClipboardList,
+  BarChart3
 } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { 
@@ -43,14 +44,14 @@ import {
 
 // Subcomponents
 import DashboardTab from './components/DashboardTab';
-import BookingsTab from './components/BookingsTab';
+import OrdersTab from './components/OrdersTab';
 import CommissionsTab from './components/CommissionsTab';
 import DriversTab from './components/DriversTab';
 import DirectoryTab from './components/DirectoryTab';
+import ReportsTab from './components/ReportsTab';
 import SettingsTab from './components/SettingsTab';
 import SearchOverlay from './components/SearchOverlay';
 import AuthScreen from './components/AuthScreen';
-import DailyInventoryTab from './components/DailyInventoryTab';
 
 // Setup modules
 import { 
@@ -60,7 +61,10 @@ import {
   googleSignIn, 
   logout, 
   setAccessToken,
-  isFirebaseConfigured
+  isFirebaseConfigured,
+  saveEmployeeToFirestore,
+  deleteEmployeeFromFirestore,
+  subscribeEmployeesFromFirestore
 } from './firebase';
 import { 
   setupFolderStructure, 
@@ -81,7 +85,8 @@ import {
   Commission, 
   Expense, 
   NotificationRef, 
-  BackupMetadata 
+  BackupMetadata,
+  Employee
 } from './types';
 import { syncEngine } from './utils/syncEngine';
 
@@ -97,7 +102,7 @@ const cleanForFirestore = <T extends Record<string, any>>(obj: T): T => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'commissions' | 'drivers' | 'directory' | 'settings' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'commissions' | 'directory' | 'reports' | 'settings'>('orders');
   
   // Auth and Token states
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -114,6 +119,7 @@ export default function App() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [notifications, setNotifications] = useState<NotificationRef[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   // Backup state
   const [backupMetadata, setBackupMetadata] = useState<BackupMetadata>({
@@ -137,7 +143,7 @@ export default function App() {
   // Session inactivity states
   const [isSessionLocked, setIsSessionLocked] = useState(false);
   const lastActivityRef = useRef<number>(Date.now());
-  const INACTIVITY_TIMEOUT = 300; // 5 minutes (300 seconds)
+  const INACTIVITY_TIMEOUT = 1800; // 30 minutes
 
   // Sandbox mode bypass
   const [isSandboxMode, setIsSandboxMode] = useState<boolean>(() => {
@@ -147,41 +153,48 @@ export default function App() {
 
   // --- 1. LOCAL DATA FALLBACKS (OFFLINE-FIRST DESIGN) ---
   const getStorageKey = (key: string) => {
-    if (user) {
+    if (user?.uid) {
       return `${key}_${user.uid}`;
     }
     return `${key}_sandbox`;
   };
 
   const loadLocalData = () => {
-    if (isAuthLoading && isFirebaseConfigured) return;
-    if (!user && !isSandboxMode) {
-      return;
-    }
     try {
-      const loadedDrivers = localStorage.getItem(getStorageKey('tcm_drivers'));
-      if (loadedDrivers) setDrivers(JSON.parse(loadedDrivers));
+      const readStoredList = (key: string) => {
+        const userVal = user?.uid ? localStorage.getItem(`${key}_${user.uid}`) : null;
+        const sandboxVal = localStorage.getItem(`${key}_sandbox`);
+        const fallbackVal = localStorage.getItem(key);
+        const raw = userVal || sandboxVal || fallbackVal;
+        return raw ? JSON.parse(raw) : null;
+      };
 
-      const loadedVehicles = localStorage.getItem(getStorageKey('tcm_vehicles'));
-      if (loadedVehicles) setVehicles(JSON.parse(loadedVehicles));
+      const loadedDrivers = readStoredList('tcm_drivers');
+      if (loadedDrivers && Array.isArray(loadedDrivers)) setDrivers(loadedDrivers);
 
-      const loadedFactories = localStorage.getItem(getStorageKey('tcm_factories'));
-      if (loadedFactories) setFactories(JSON.parse(loadedFactories));
+      const loadedVehicles = readStoredList('tcm_vehicles');
+      if (loadedVehicles && Array.isArray(loadedVehicles)) setVehicles(loadedVehicles);
 
-      const loadedCustomers = localStorage.getItem(getStorageKey('tcm_customers'));
-      if (loadedCustomers) setCustomers(JSON.parse(loadedCustomers));
+      const loadedFactories = readStoredList('tcm_factories');
+      if (loadedFactories && Array.isArray(loadedFactories)) setFactories(loadedFactories);
 
-      const loadedBookings = localStorage.getItem(getStorageKey('tcm_bookings'));
-      if (loadedBookings) setBookings(JSON.parse(loadedBookings));
+      const loadedCustomers = readStoredList('tcm_customers');
+      if (loadedCustomers && Array.isArray(loadedCustomers)) setCustomers(loadedCustomers);
 
-      const loadedCommissions = localStorage.getItem(getStorageKey('tcm_commissions'));
-      if (loadedCommissions) setCommissions(JSON.parse(loadedCommissions));
+      const loadedBookings = readStoredList('tcm_bookings');
+      if (loadedBookings && Array.isArray(loadedBookings)) setBookings(loadedBookings);
 
-      const loadedExpenses = localStorage.getItem(getStorageKey('tcm_expenses'));
-      if (loadedExpenses) setExpenses(JSON.parse(loadedExpenses));
+      const loadedCommissions = readStoredList('tcm_commissions');
+      if (loadedCommissions && Array.isArray(loadedCommissions)) setCommissions(loadedCommissions);
 
-      const loadedNotifications = localStorage.getItem(getStorageKey('tcm_notifications'));
-      if (loadedNotifications) setNotifications(JSON.parse(loadedNotifications));
+      const loadedExpenses = readStoredList('tcm_expenses');
+      if (loadedExpenses && Array.isArray(loadedExpenses)) setExpenses(loadedExpenses);
+
+      const loadedNotifications = readStoredList('tcm_notifications');
+      if (loadedNotifications && Array.isArray(loadedNotifications)) setNotifications(loadedNotifications);
+
+      const loadedEmployees = readStoredList('tcm_employees');
+      if (loadedEmployees && Array.isArray(loadedEmployees)) setEmployees(loadedEmployees);
     } catch (e) {
       console.error('Error loading fallback local state:', e);
     }
@@ -200,6 +213,7 @@ export default function App() {
     setCommissions([]);
     setExpenses([]);
     setNotifications([]);
+    setEmployees([]);
 
     localStorage.removeItem(getStorageKey('tcm_drivers'));
     localStorage.removeItem(getStorageKey('tcm_vehicles'));
@@ -209,23 +223,15 @@ export default function App() {
     localStorage.removeItem(getStorageKey('tcm_commissions'));
     localStorage.removeItem(getStorageKey('tcm_expenses'));
     localStorage.removeItem(getStorageKey('tcm_notifications'));
+    localStorage.removeItem(getStorageKey('tcm_employees'));
     localStorage.removeItem(getStorageKey('tcm_last_backup'));
     setBackupMetadata({ lastBackupDate: '', status: 'idle' });
   };
 
-  // Ensure a clean production slate: if demo data was previously seeded, wipe it once.
+  // Ensure initial local state is loaded on mount or auth change
   useEffect(() => {
     const wasSeeded = localStorage.getItem('tcm_seeded');
     if (wasSeeded === 'yes') {
-      localStorage.removeItem('tcm_drivers_sandbox');
-      localStorage.removeItem('tcm_vehicles_sandbox');
-      localStorage.removeItem('tcm_factories_sandbox');
-      localStorage.removeItem('tcm_customers_sandbox');
-      localStorage.removeItem('tcm_bookings_sandbox');
-      localStorage.removeItem('tcm_commissions_sandbox');
-      localStorage.removeItem('tcm_expenses_sandbox');
-      localStorage.removeItem('tcm_notifications_sandbox');
-      localStorage.removeItem('tcm_last_backup_sandbox');
       localStorage.removeItem('tcm_seeded');
     }
     loadLocalData();
@@ -238,7 +244,7 @@ export default function App() {
     }
   }, [isSandboxMode]);
 
-  // Inactivity tracking mechanism to auto logout and lock session
+  // Inactivity tracking mechanism to lock session
   useEffect(() => {
     if (isSessionLocked) return;
 
@@ -267,7 +273,6 @@ export default function App() {
             await logout();
             setUser(null);
             setAccessTokenState(null);
-            clearUserDataAndStorage();
           } catch (e) {
             console.error('Error on auto session logout:', e);
           }
@@ -299,7 +304,7 @@ export default function App() {
           const lastActivity = Number(lastActivityStr);
           const elapsedSeconds = (Date.now() - lastActivity) / 1000;
           if (elapsedSeconds >= INACTIVITY_TIMEOUT) {
-            // Expired session on load - log out immediately
+            // Expired session on load
             try {
               await logout();
             } catch (e) {
@@ -309,7 +314,6 @@ export default function App() {
             setAccessTokenState(null);
             setIsSessionLocked(true);
             setIsAuthLoading(false);
-            clearUserDataAndStorage();
             return;
           }
         }
@@ -325,9 +329,7 @@ export default function App() {
         setUser(null);
         setAccessTokenState(null);
         setIsAuthLoading(false);
-        if (!isSandboxMode) {
-          clearUserDataAndStorage();
-        }
+        loadLocalData();
       }
     );
 
@@ -339,9 +341,7 @@ export default function App() {
   // Sync state into Firestore collections if user is authenticated
   useEffect(() => {
     if (!user) {
-      if (!isSandboxMode) {
-        clearUserDataAndStorage();
-      }
+      loadLocalData();
       return;
     }
 
@@ -354,16 +354,24 @@ export default function App() {
         const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', user.uid)));
         const hasFirestoreData = !driversSnap.empty;
 
-        // If Firestore is empty, but we have local sandbox data, upload local sandbox data to Firestore first
+        // If Firestore is empty, check for local offline data and sync to Firestore
         if (!hasFirestoreData) {
-          const localDrivers = JSON.parse(localStorage.getItem('tcm_drivers_sandbox') || '[]');
-          const localVehicles = JSON.parse(localStorage.getItem('tcm_vehicles_sandbox') || '[]');
-          const localFactories = JSON.parse(localStorage.getItem('tcm_factories_sandbox') || '[]');
-          const localCustomers = JSON.parse(localStorage.getItem('tcm_customers_sandbox') || '[]');
-          const localBookings = JSON.parse(localStorage.getItem('tcm_bookings_sandbox') || '[]');
-          const localCommissions = JSON.parse(localStorage.getItem('tcm_commissions_sandbox') || '[]');
-          const localExpenses = JSON.parse(localStorage.getItem('tcm_expenses_sandbox') || '[]');
-          const localNotifications = JSON.parse(localStorage.getItem('tcm_notifications_sandbox') || '[]');
+          const getLocalList = (k: string) => {
+            const userKeyVal = localStorage.getItem(`${k}_${user.uid}`);
+            const sandboxKeyVal = localStorage.getItem(`${k}_sandbox`);
+            const fallbackVal = localStorage.getItem(k);
+            const raw = userKeyVal || sandboxKeyVal || fallbackVal;
+            return raw ? JSON.parse(raw) : [];
+          };
+
+          const localDrivers = getLocalList('tcm_drivers');
+          const localVehicles = getLocalList('tcm_vehicles');
+          const localFactories = getLocalList('tcm_factories');
+          const localCustomers = getLocalList('tcm_customers');
+          const localBookings = getLocalList('tcm_bookings');
+          const localCommissions = getLocalList('tcm_commissions');
+          const localExpenses = getLocalList('tcm_expenses');
+          const localNotifications = getLocalList('tcm_notifications');
 
           const hasLocalData = localDrivers.length > 0 || 
                                localVehicles.length > 0 || 
@@ -374,7 +382,7 @@ export default function App() {
                                localExpenses.length > 0;
 
           if (hasLocalData && isSubscribed) {
-            console.log('Firestore is empty but local state has data. Uploading local state to Firestore...');
+            console.log('Uploading local state to Firestore for user:', user.uid);
             const batchToSync = {
               drivers: localDrivers,
               vehicles: localVehicles,
@@ -389,7 +397,7 @@ export default function App() {
             for (const [colName, list] of Object.entries(batchToSync)) {
               for (const item of list as any[]) {
                 const docRef = doc(db, colName, item.id);
-                await setDoc(docRef, { ...item, userId: user.uid }, { merge: true });
+                await setDoc(docRef, cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
               }
             }
             console.log('Local state successfully uploaded to Firestore!');
@@ -401,62 +409,68 @@ export default function App() {
 
       if (!isSubscribed) return;
 
-      // 2. Establish onSnapshot listeners
+      // 2. Establish onSnapshot listeners with error callbacks
       const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
         setDrivers(data);
         saveLocalData('tcm_drivers', data);
-      });
+      }, (err) => console.error('Firestore drivers listener error:', err));
       unsubs.push(unsubDrivers);
 
       const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
         setVehicles(data);
         saveLocalData('tcm_vehicles', data);
-      });
+      }, (err) => console.error('Firestore vehicles listener error:', err));
       unsubs.push(unsubVehicles);
 
       const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
         setFactories(data);
         saveLocalData('tcm_factories', data);
-      });
+      }, (err) => console.error('Firestore factories listener error:', err));
       unsubs.push(unsubFactories);
 
       const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
         setCustomers(data);
         saveLocalData('tcm_customers', data);
-      });
+      }, (err) => console.error('Firestore customers listener error:', err));
       unsubs.push(unsubCustomers);
 
       const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
         setBookings(data);
         saveLocalData('tcm_bookings', data);
-      });
+      }, (err) => console.error('Firestore bookings listener error:', err));
       unsubs.push(unsubBookings);
 
       const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
         setCommissions(data);
         saveLocalData('tcm_commissions', data);
-      });
+      }, (err) => console.error('Firestore commissions listener error:', err));
       unsubs.push(unsubCommissions);
 
       const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
         setExpenses(data);
         saveLocalData('tcm_expenses', data);
-      });
+      }, (err) => console.error('Firestore expenses listener error:', err));
       unsubs.push(unsubExpenses);
 
       const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
         setNotifications(data);
         saveLocalData('tcm_notifications', data);
-      });
+      }, (err) => console.error('Firestore notifications listener error:', err));
       unsubs.push(unsubNotifications);
+
+      const unsubEmployees = subscribeEmployeesFromFirestore(user.uid, (empData) => {
+        setEmployees(empData);
+        saveLocalData('tcm_employees', empData);
+      });
+      if (unsubEmployees) unsubs.push(unsubEmployees);
     };
 
     initFirestoreSync();
@@ -466,6 +480,47 @@ export default function App() {
       unsubs.forEach(unsub => unsub());
     };
   }, [user]);
+
+  // Employee CRUD handlers
+  const handleSaveEmployee = async (empData: any) => {
+    const id = `emp_${Date.now()}`;
+    const newEmp: Employee = {
+      id,
+      fullName: empData.fullName,
+      email: empData.email,
+      phone: empData.phone,
+      role: empData.role,
+      status: empData.status,
+      permissions: empData.permissions,
+      adminUserId: user?.uid || 'offline_admin',
+      createdAt: new Date().toISOString()
+    };
+    const updatedList = [newEmp, ...employees];
+    setEmployees(updatedList);
+    saveLocalData('tcm_employees', updatedList);
+    if (user?.uid) {
+      await saveEmployeeToFirestore(newEmp);
+    }
+  };
+
+  const handleUpdateEmployee = async (id: string, updates: Partial<Employee>) => {
+    const updatedList = employees.map(e => e.id === id ? { ...e, ...updates } : e);
+    setEmployees(updatedList);
+    saveLocalData('tcm_employees', updatedList);
+    const target = updatedList.find(e => e.id === id);
+    if (target && user?.uid) {
+      await saveEmployeeToFirestore(target);
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    const updatedList = employees.filter(e => e.id !== id);
+    setEmployees(updatedList);
+    saveLocalData('tcm_employees', updatedList);
+    if (user?.uid) {
+      await deleteEmployeeFromFirestore(id);
+    }
+  };
 
   // Restore cached Google access token if exists
   useEffect(() => {
@@ -1466,7 +1521,7 @@ export default function App() {
     );
   }
 
-  if (!user && !isSandboxMode) {
+  if (!user) {
     return (
       <AuthScreen
         onAuthSuccess={(authenticatedUser, token) => {
@@ -1481,14 +1536,6 @@ export default function App() {
           setIsSandboxMode(false);
           localStorage.removeItem('tcm_sandbox_active');
           addNotification('Welcome back', `Logged in successfully!`);
-        }}
-        onEnterOfflineMode={() => {
-          localStorage.setItem('tcm_last_activity', Date.now().toString());
-          lastActivityRef.current = Date.now();
-          setIsSessionLocked(false);
-          setIsSandboxMode(true);
-          localStorage.setItem('tcm_sandbox_active', 'true');
-          addNotification('Local Storage Active', 'Running in local device storage mode.');
         }}
       />
     );
@@ -1506,8 +1553,8 @@ export default function App() {
           <div>
             <h1 className="text-sm font-bold text-slate-900 tracking-tight">Transport Manager</h1>
             <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-              <span className={`w-1.5 h-1.5 rounded-full ${user ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-              {user ? 'Cloud Database Mode' : 'Offline Sandbox Mode'}
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Firebase Cloud Connected
             </p>
           </div>
         </div>
@@ -1598,8 +1645,8 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'bookings' && (
-          <BookingsTab 
+        {activeTab === 'orders' && (
+          <OrdersTab 
             bookings={bookings} 
             drivers={drivers} 
             vehicles={vehicles} 
@@ -1607,9 +1654,9 @@ export default function App() {
             customers={customers}
             accessToken={accessToken}
             onAddBooking={handleAddBooking}
+            onUpdateBooking={handleUpdateBooking}
+            onDeleteBooking={handleDeleteBooking}
             onUpdateBookingStatus={handleUpdateBookingStatus}
-            onTriggerGmail={handleTriggerGmail}
-            onTriggerCalendar={handleTriggerCalendar}
           />
         )}
 
@@ -1623,25 +1670,32 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'drivers' && (
-          <DriversTab 
-            drivers={drivers} 
-            vehicles={vehicles} 
-            onAddDriver={handleAddDriver} 
-            onAddVehicle={handleAddVehicle} 
-            onUpdateDriver={handleUpdateDriver}
-            onUpdateVehicle={handleUpdateVehicle}
-          />
-        )}
-
         {activeTab === 'directory' && (
           <DirectoryTab 
+            drivers={drivers}
+            vehicles={vehicles}
             factories={factories} 
             customers={customers} 
             accessToken={accessToken}
+            onAddDriver={handleAddDriver}
+            onAddVehicle={handleAddVehicle}
+            onUpdateDriver={handleUpdateDriver}
+            onUpdateVehicle={handleUpdateVehicle}
             onAddFactory={handleAddFactory} 
             onAddCustomer={handleAddCustomer} 
             onSyncContact={handleSyncContact}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <ReportsTab 
+            bookings={bookings}
+            commissions={commissions}
+            expenses={expenses}
+            drivers={drivers}
+            vehicles={vehicles}
+            factories={factories}
+            customers={customers}
           />
         )}
 
@@ -1649,6 +1703,10 @@ export default function App() {
           <SettingsTab 
             user={user} 
             accessToken={accessToken}
+            employees={employees}
+            onSaveEmployee={handleSaveEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
             onLogin={handleLinkGoogle} 
             onLogout={handleLogout}
             backupMetadata={backupMetadata}
@@ -1658,20 +1716,6 @@ export default function App() {
             onGenerateGoogleSheetsReport={handleGenerateSheetsReport}
             onGenerateCsvReport={handleGenerateCsvReport}
             onGeneratePdfReport={handleGeneratePdfReport}
-          />
-        )}
-
-        {activeTab === 'inventory' && (
-          <DailyInventoryTab 
-            bookings={bookings} 
-            drivers={drivers} 
-            vehicles={vehicles} 
-            factories={factories} 
-            customers={customers}
-            accessToken={accessToken}
-            onAddBooking={handleAddBooking}
-            onUpdateBooking={handleUpdateBooking}
-            onDeleteBooking={handleDeleteBooking}
           />
         )}
       </main>
@@ -1692,22 +1736,12 @@ export default function App() {
             
             <button
               onClick={() => {
-                setActiveTab('bookings');
+                setActiveTab('orders');
                 setIsFabOpen(false);
               }}
               className="w-full text-left p-2 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl flex items-center gap-2"
             >
-              <Briefcase size={14} className="text-blue-500" /> New Booking
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('drivers');
-                setIsFabOpen(false);
-              }}
-              className="w-full text-left p-2 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl flex items-center gap-2"
-            >
-              <User size={14} className="text-emerald-500" /> Register Driver
+              <Briefcase size={14} className="text-blue-500" /> New Order
             </button>
 
             <button
@@ -1717,7 +1751,17 @@ export default function App() {
               }}
               className="w-full text-left p-2 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl flex items-center gap-2"
             >
-              <Users size={14} className="text-indigo-500" /> Sourcing Partner
+              <User size={14} className="text-emerald-500" /> Register Driver
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('reports');
+                setIsFabOpen(false);
+              }}
+              className="w-full text-left p-2 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl flex items-center gap-2"
+            >
+              <BarChart3 size={14} className="text-purple-500" /> View Reports
             </button>
 
             <button
@@ -1746,23 +1790,13 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('bookings')}
+          onClick={() => setActiveTab('orders')}
           className={`flex flex-col items-center justify-center transition-all ${
-            activeTab === 'bookings' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
+            activeTab === 'orders' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
           }`}
         >
           <Briefcase size={20} />
-          <span className="text-[9px] font-bold mt-1 tracking-tight">Bookings</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('inventory')}
-          className={`flex flex-col items-center justify-center transition-all ${
-            activeTab === 'inventory' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <ClipboardList size={20} />
-          <span className="text-[9px] font-bold mt-1 tracking-tight">Daily Log</span>
+          <span className="text-[9px] font-bold mt-1 tracking-tight">Orders</span>
         </button>
 
         <button
@@ -1776,13 +1810,13 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('drivers')}
+          onClick={() => setActiveTab('reports')}
           className={`flex flex-col items-center justify-center transition-all ${
-            activeTab === 'drivers' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
+            activeTab === 'reports' ? 'text-blue-600 scale-105' : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <Truck size={20} />
-          <span className="text-[9px] font-bold mt-1 tracking-tight">Drivers</span>
+          <BarChart3 size={20} />
+          <span className="text-[9px] font-bold mt-1 tracking-tight">Reports</span>
         </button>
 
         <button

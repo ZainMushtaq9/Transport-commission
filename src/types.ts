@@ -148,3 +148,22 @@ export interface BackupMetadata {
   status: 'idle' | 'backing_up' | 'restoring' | 'success' | 'error';
   message?: string;
 }
+
+export interface Employee {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: 'Admin' | 'Employee';
+  status: 'Active' | 'Disabled';
+  permissions: {
+    orders: boolean;
+    drivers: boolean;
+    earnings: boolean;
+    expenses: boolean;
+    reports: boolean;
+    settings: boolean;
+  };
+  adminUserId: string;
+  createdAt: string;
+}

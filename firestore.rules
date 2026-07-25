@@ -53,5 +53,10 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
+
+    // 9. EMPLOYEES collection rules
+    match /employees/{employeeId} {
+      allow create, read, update, delete: if isSignedIn();
+    }
   }
 }

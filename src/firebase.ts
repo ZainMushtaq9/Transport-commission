@@ -13,7 +13,13 @@ import {
   onAuthStateChanged, 
   User,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword,
+  updateEmail,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -196,9 +202,13 @@ export const logout = async () => {
 };
 
 // Email password sign in
-export const signInWithEmail = async (email: string, pass: string): Promise<User> => {
+export const signInWithEmail = async (email: string, pass: string, rememberMe: boolean = true): Promise<User> => {
   if (!isFirebaseConfigured) {
-    throw new Error('Database configurations are missing or invalid. Please run in Local Storage Mode.');
+    throw new Error('Database configurations are missing or invalid.');
+  }
+  if (authInstance) {
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(authInstance, persistence);
   }
   const credential = await signInWithEmailAndPassword(auth, email, pass);
   localStorage.setItem('tcm_last_activity', Date.now().toString());
@@ -206,9 +216,13 @@ export const signInWithEmail = async (email: string, pass: string): Promise<User
 };
 
 // Email password sign up
-export const signUpWithEmail = async (email: string, pass: string): Promise<User> => {
+export const signUpWithEmail = async (email: string, pass: string, rememberMe: boolean = true): Promise<User> => {
   if (!isFirebaseConfigured) {
-    throw new Error('Database configurations are missing or invalid. Please run in Local Storage Mode.');
+    throw new Error('Database configurations are missing or invalid.');
+  }
+  if (authInstance) {
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(authInstance, persistence);
   }
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
   localStorage.setItem('tcm_last_activity', Date.now().toString());
@@ -224,4 +238,62 @@ export const getAccessToken = async (): Promise<string | null> => {
 export const setAccessToken = (token: string) => {
   cachedAccessToken = token;
   localStorage.setItem('tcm_google_access_token', token);
+};
+
+// Reset Password Link
+export const sendPasswordResetLink = async (email: string): Promise<void> => {
+  if (!isFirebaseConfigured) {
+    throw new Error('Database configurations are missing or invalid.');
+  }
+  await sendPasswordResetEmail(auth, email);
+};
+
+// Change Current User Password
+export const changeCurrentUserPassword = async (newPassword: string): Promise<void> => {
+  if (!auth.currentUser) {
+    throw new Error('No user is currently logged in.');
+  }
+  await updatePassword(auth.currentUser, newPassword);
+};
+
+// Change Current User Email
+export const changeCurrentUserEmail = async (newEmail: string): Promise<void> => {
+  if (!auth.currentUser) {
+    throw new Error('No user is currently logged in.');
+  }
+  await updateEmail(auth.currentUser, newEmail);
+};
+
+// Employee Firestore Operations
+export const saveEmployeeToFirestore = async (employeeData: any): Promise<void> => {
+  if (!isFirebaseConfigured || !db) return;
+  const docRef = doc(db, 'employees', employeeData.id);
+  await setDoc(docRef, employeeData, { merge: true });
+};
+
+export const deleteEmployeeFromFirestore = async (employeeId: string): Promise<void> => {
+  if (!isFirebaseConfigured || !db) return;
+  const docRef = doc(db, 'employees', employeeId);
+  await deleteDoc(docRef);
+};
+
+export const subscribeEmployeesFromFirestore = (
+  adminUserId: string,
+  callback: (employees: any[]) => void
+) => {
+  if (!isFirebaseConfigured || !db) return () => {};
+  const q = query(collection(db, 'employees'), where('adminUserId', '==', adminUserId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const employees = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      callback(employees);
+    },
+    (err) => {
+      console.error('Error fetching employees snapshot:', err);
+    }
+  );
 };
