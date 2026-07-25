@@ -1,9 +1,12 @@
 {
-  "projectId": "your-firebase-project-id",
-  "appId": "your-firebase-app-id",
-  "apiKey": "your-firebase-api-key",
-  "authDomain": "your-firebase-auth-domain",
-  "storageBucket": "your-firebase-storage-bucket",
-  "messagingSenderId": "your-firebase-messaging-sender-id",
-  "measurementId": "your-firebase-measurement-id"
+  "projectId": "autonomous-shine-xw532",
+  "appId": "1:977697897154:web:923b00d1823cf59601595b",
+  "apiKey": "AIzaSyC189UjgoVbzqwpsc38Tr0HoU0-ExlDKTY",
+  "authDomain": "autonomous-shine-xw532.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-transportcommiss-e66b249e-1cdd-4699-af19-2dff34165acb",
+  "storageBucket": "autonomous-shine-xw532.firebasestorage.app",
+  "messagingSenderId": "977697897154",
+  "measurementId": "",
+  "oAuthClientId": "977697897154-hbr96p0jenk89l86atac56ug7p3lslqc.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

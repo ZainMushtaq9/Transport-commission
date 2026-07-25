@@ -85,6 +85,17 @@ import {
 } from './types';
 import { syncEngine } from './utils/syncEngine';
 
+const cleanForFirestore = <T extends Record<string, any>>(obj: T): T => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'commissions' | 'drivers' | 'directory' | 'settings' | 'inventory'>('dashboard');
   
@@ -130,6 +141,7 @@ export default function App() {
 
   // Sandbox mode bypass
   const [isSandboxMode, setIsSandboxMode] = useState<boolean>(() => {
+    if (!isFirebaseConfigured) return true;
     return localStorage.getItem('tcm_sandbox_active') === 'true';
   });
 
@@ -142,26 +154,34 @@ export default function App() {
   };
 
   const loadLocalData = () => {
+    if (isAuthLoading && isFirebaseConfigured) return;
     if (!user && !isSandboxMode) {
-      setDrivers([]);
-      setVehicles([]);
-      setFactories([]);
-      setCustomers([]);
-      setBookings([]);
-      setCommissions([]);
-      setExpenses([]);
-      setNotifications([]);
       return;
     }
     try {
-      setDrivers(JSON.parse(localStorage.getItem(getStorageKey('tcm_drivers')) || '[]'));
-      setVehicles(JSON.parse(localStorage.getItem(getStorageKey('tcm_vehicles')) || '[]'));
-      setFactories(JSON.parse(localStorage.getItem(getStorageKey('tcm_factories')) || '[]'));
-      setCustomers(JSON.parse(localStorage.getItem(getStorageKey('tcm_customers')) || '[]'));
-      setBookings(JSON.parse(localStorage.getItem(getStorageKey('tcm_bookings')) || '[]'));
-      setCommissions(JSON.parse(localStorage.getItem(getStorageKey('tcm_commissions')) || '[]'));
-      setExpenses(JSON.parse(localStorage.getItem(getStorageKey('tcm_expenses')) || '[]'));
-      setNotifications(JSON.parse(localStorage.getItem(getStorageKey('tcm_notifications')) || '[]'));
+      const loadedDrivers = localStorage.getItem(getStorageKey('tcm_drivers'));
+      if (loadedDrivers) setDrivers(JSON.parse(loadedDrivers));
+
+      const loadedVehicles = localStorage.getItem(getStorageKey('tcm_vehicles'));
+      if (loadedVehicles) setVehicles(JSON.parse(loadedVehicles));
+
+      const loadedFactories = localStorage.getItem(getStorageKey('tcm_factories'));
+      if (loadedFactories) setFactories(JSON.parse(loadedFactories));
+
+      const loadedCustomers = localStorage.getItem(getStorageKey('tcm_customers'));
+      if (loadedCustomers) setCustomers(JSON.parse(loadedCustomers));
+
+      const loadedBookings = localStorage.getItem(getStorageKey('tcm_bookings'));
+      if (loadedBookings) setBookings(JSON.parse(loadedBookings));
+
+      const loadedCommissions = localStorage.getItem(getStorageKey('tcm_commissions'));
+      if (loadedCommissions) setCommissions(JSON.parse(loadedCommissions));
+
+      const loadedExpenses = localStorage.getItem(getStorageKey('tcm_expenses'));
+      if (loadedExpenses) setExpenses(JSON.parse(loadedExpenses));
+
+      const loadedNotifications = localStorage.getItem(getStorageKey('tcm_notifications'));
+      if (loadedNotifications) setNotifications(JSON.parse(loadedNotifications));
     } catch (e) {
       console.error('Error loading fallback local state:', e);
     }
@@ -735,9 +755,9 @@ export default function App() {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'notifications', notif.id), notif);
+        await setDoc(doc(db, 'notifications', notif.id), cleanForFirestore(notif));
       } catch (err) {
-        console.error(err);
+        console.error('Firestore notif save error:', err);
       }
     }
   };
@@ -755,7 +775,11 @@ export default function App() {
     saveLocalData('tcm_drivers', updated);
 
     if (user) {
-      await setDoc(doc(db, 'drivers', newDriver.id), newDriver);
+      try {
+        await setDoc(doc(db, 'drivers', newDriver.id), cleanForFirestore(newDriver));
+      } catch (err) {
+        console.error('Firestore driver save error:', err);
+      }
     }
 
     addNotification('Driver Added', `Successfully registered profile for ${newDriver.fullName}.`);
@@ -775,7 +799,11 @@ export default function App() {
     saveLocalData('tcm_vehicles', updated);
 
     if (user) {
-      await setDoc(doc(db, 'vehicles', newVehicle.id), newVehicle);
+      try {
+        await setDoc(doc(db, 'vehicles', newVehicle.id), cleanForFirestore(newVehicle));
+      } catch (err) {
+        console.error('Firestore vehicle save error:', err);
+      }
     }
 
     addNotification('Vehicle Registered', `Linked ${newVehicle.registrationNumber} (${newVehicle.vehicleType}) successfully.`);
@@ -790,7 +818,11 @@ export default function App() {
     if (user) {
       const existing = drivers.find(d => d.id === id);
       if (existing) {
-        await setDoc(doc(db, 'drivers', id), { ...existing, ...driverInput, userId: user.uid }, { merge: true });
+        try {
+          await setDoc(doc(db, 'drivers', id), cleanForFirestore({ ...existing, ...driverInput, userId: user.uid }), { merge: true });
+        } catch (err) {
+          console.error('Firestore driver update error:', err);
+        }
       }
     }
 
@@ -806,7 +838,11 @@ export default function App() {
     if (user) {
       const existing = vehicles.find(v => v.id === id);
       if (existing) {
-        await setDoc(doc(db, 'vehicles', id), { ...existing, ...vehicleInput, userId: user.uid }, { merge: true });
+        try {
+          await setDoc(doc(db, 'vehicles', id), cleanForFirestore({ ...existing, ...vehicleInput, userId: user.uid }), { merge: true });
+        } catch (err) {
+          console.error('Firestore vehicle update error:', err);
+        }
       }
     }
 
@@ -827,7 +863,11 @@ export default function App() {
     saveLocalData('tcm_factories', updated);
 
     if (user) {
-      await setDoc(doc(db, 'factories', newFactory.id), newFactory);
+      try {
+        await setDoc(doc(db, 'factories', newFactory.id), cleanForFirestore(newFactory));
+      } catch (err) {
+        console.error('Firestore factory save error:', err);
+      }
     }
 
     addNotification('Factory Indexed', `Added sourcing partner: ${newFactory.factoryName}.`);
@@ -847,7 +887,11 @@ export default function App() {
     saveLocalData('tcm_customers', updated);
 
     if (user) {
-      await setDoc(doc(db, 'customers', newCustomer.id), newCustomer);
+      try {
+        await setDoc(doc(db, 'customers', newCustomer.id), cleanForFirestore(newCustomer));
+      } catch (err) {
+        console.error('Firestore customer save error:', err);
+      }
     }
 
     addNotification('Warehouse Added', `Added warehouse location: ${newCustomer.warehouseName}.`);
@@ -888,8 +932,12 @@ export default function App() {
     saveLocalData('tcm_commissions', updatedCommissions);
 
     if (user) {
-      await setDoc(doc(db, 'bookings', newBooking.id), newBooking);
-      await setDoc(doc(db, 'commissions', newCommission.id), newCommission);
+      try {
+        await setDoc(doc(db, 'bookings', newBooking.id), cleanForFirestore(newBooking));
+        await setDoc(doc(db, 'commissions', newCommission.id), cleanForFirestore(newCommission));
+      } catch (err) {
+        console.error('Firestore booking/commission save error:', err);
+      }
     }
 
     addNotification('Order Dispatched', `Booking dispatched: ${newBooking.product} (Rs. ${newBooking.commission} Comm).`);
@@ -919,7 +967,11 @@ export default function App() {
     saveLocalData('tcm_bookings', updated);
 
     if (user) {
-      await updateDoc(doc(db, 'bookings', id), { status });
+      try {
+        await updateDoc(doc(db, 'bookings', id), cleanForFirestore({ status }));
+      } catch (err) {
+        console.error('Firestore booking status update error:', err);
+      }
     }
 
     addNotification('Trip Status Updated', `Booking status changed to "${status}".`);
@@ -932,7 +984,12 @@ export default function App() {
     saveLocalData('tcm_bookings', updated);
 
     if (user) {
-      await updateDoc(doc(db, 'bookings', id), updatedFields);
+      try {
+        await updateDoc(doc(db, 'bookings', id), cleanForFirestore(updatedFields));
+      } catch (err) {
+        console.error('Firestore booking update error:', err);
+      }
+      
       // Synchronize changes to corresponding Commission record if financial fields changed
       const commissionUpdate: any = {};
       if (updatedFields.fare !== undefined) commissionUpdate.fare = updatedFields.fare;
@@ -948,7 +1005,11 @@ export default function App() {
           const updatedComms = commissions.map(c => c.bookingId === id ? { ...c, ...commissionUpdate } as Commission : c);
           setCommissions(updatedComms);
           saveLocalData('tcm_commissions', updatedComms);
-          await updateDoc(doc(db, 'commissions', commToUpdate.id), commissionUpdate);
+          try {
+            await updateDoc(doc(db, 'commissions', commToUpdate.id), cleanForFirestore(commissionUpdate));
+          } catch (err) {
+            console.error('Firestore commission update error:', err);
+          }
         }
       }
     } else {
@@ -981,10 +1042,14 @@ export default function App() {
     saveLocalData('tcm_commissions', updatedComms);
 
     if (user) {
-      await deleteDoc(doc(db, 'bookings', id));
-      const commToDelete = commissions.find(c => c.bookingId === id);
-      if (commToDelete) {
-        await deleteDoc(doc(db, 'commissions', commToDelete.id));
+      try {
+        await deleteDoc(doc(db, 'bookings', id));
+        const commToDelete = commissions.find(c => c.bookingId === id);
+        if (commToDelete) {
+          await deleteDoc(doc(db, 'commissions', commToDelete.id));
+        }
+      } catch (err) {
+        console.error('Firestore delete booking error:', err);
       }
     }
 
@@ -1004,7 +1069,11 @@ export default function App() {
       // Find the specific commission ID
       const targetComm = commissions.find(c => c.bookingId === bookingId);
       if (targetComm) {
-        await updateDoc(doc(db, 'commissions', targetComm.id), { paymentStatus: newStatus });
+        try {
+          await updateDoc(doc(db, 'commissions', targetComm.id), cleanForFirestore({ paymentStatus: newStatus }));
+        } catch (err) {
+          console.error('Firestore update commission status error:', err);
+        }
       }
     }
 
@@ -1025,7 +1094,11 @@ export default function App() {
     saveLocalData('tcm_expenses', updated);
 
     if (user) {
-      await setDoc(doc(db, 'expenses', newExpense.id), newExpense);
+      try {
+        await setDoc(doc(db, 'expenses', newExpense.id), cleanForFirestore(newExpense));
+      } catch (err) {
+        console.error('Firestore expense save error:', err);
+      }
     }
 
     addNotification('Expense Recorded', `Logged Rs. ${newExpense.amount} for ${newExpense.category}.`);

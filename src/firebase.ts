@@ -55,11 +55,13 @@ let app: any = null;
 let authInstance: any = null;
 let dbInstance: any = null;
 
+const customDatabaseId = env.VITE_FIREBASE_DATABASE_ID || (firebaseConfig as any).firestoreDatabaseId;
+
 if (isFirebaseConfigured) {
   try {
     app = initializeApp(resolvedConfig);
     authInstance = getAuth(app);
-    dbInstance = getFirestore(app);
+    dbInstance = customDatabaseId ? getFirestore(app, customDatabaseId) : getFirestore(app);
   } catch (err) {
     console.error("Firebase initialization failed dynamically:", err);
   }
