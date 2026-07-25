@@ -64,7 +64,10 @@ import {
   isFirebaseConfigured,
   saveEmployeeToFirestore,
   deleteEmployeeFromFirestore,
-  subscribeEmployeesFromFirestore
+  subscribeEmployeesFromFirestore,
+  testFirestoreConnection,
+  handleFirestoreError,
+  OperationType
 } from './firebase';
 import { 
   setupFolderStructure, 
@@ -350,6 +353,8 @@ export default function App() {
 
     const initFirestoreSync = async () => {
       try {
+        await testFirestoreConnection();
+
         // 1. Check if Firestore contains any data for this user
         const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', user.uid)));
         const hasFirestoreData = !driversSnap.empty;
@@ -414,56 +419,56 @@ export default function App() {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
         setDrivers(data);
         saveLocalData('tcm_drivers', data);
-      }, (err) => console.error('Firestore drivers listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'drivers'));
       unsubs.push(unsubDrivers);
 
       const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
         setVehicles(data);
         saveLocalData('tcm_vehicles', data);
-      }, (err) => console.error('Firestore vehicles listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'vehicles'));
       unsubs.push(unsubVehicles);
 
       const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
         setFactories(data);
         saveLocalData('tcm_factories', data);
-      }, (err) => console.error('Firestore factories listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'factories'));
       unsubs.push(unsubFactories);
 
       const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
         setCustomers(data);
         saveLocalData('tcm_customers', data);
-      }, (err) => console.error('Firestore customers listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'customers'));
       unsubs.push(unsubCustomers);
 
       const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
         setBookings(data);
         saveLocalData('tcm_bookings', data);
-      }, (err) => console.error('Firestore bookings listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'bookings'));
       unsubs.push(unsubBookings);
 
       const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
         setCommissions(data);
         saveLocalData('tcm_commissions', data);
-      }, (err) => console.error('Firestore commissions listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'commissions'));
       unsubs.push(unsubCommissions);
 
       const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
         setExpenses(data);
         saveLocalData('tcm_expenses', data);
-      }, (err) => console.error('Firestore expenses listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'expenses'));
       unsubs.push(unsubExpenses);
 
       const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
         const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
         setNotifications(data);
         saveLocalData('tcm_notifications', data);
-      }, (err) => console.error('Firestore notifications listener error:', err));
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
       const unsubEmployees = subscribeEmployeesFromFirestore(user.uid, (empData) => {
@@ -905,6 +910,40 @@ export default function App() {
     triggerAutoDriveBackup(drivers, updated);
   };
 
+  const handleDeleteDriver = async (id: string) => {
+    const updated = drivers.filter(d => d.id !== id);
+    setDrivers(updated);
+    saveLocalData('tcm_drivers', updated);
+
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'drivers', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `drivers/${id}`);
+      }
+    }
+
+    addNotification('Driver Deleted', `Driver profile removed from database.`);
+    triggerAutoDriveBackup(updated);
+  };
+
+  const handleDeleteVehicle = async (id: string) => {
+    const updated = vehicles.filter(v => v.id !== id);
+    setVehicles(updated);
+    saveLocalData('tcm_vehicles', updated);
+
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'vehicles', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `vehicles/${id}`);
+      }
+    }
+
+    addNotification('Vehicle Deleted', `Vehicle record removed from database.`);
+    triggerAutoDriveBackup(drivers, updated);
+  };
+
   const handleAddFactory = async (factoryInput: Omit<Factory, 'id' | 'createdAt'>) => {
     const newFactory: Factory = {
       ...factoryInput,
@@ -929,6 +968,40 @@ export default function App() {
     triggerAutoDriveBackup(drivers, vehicles, updated);
   };
 
+  const handleUpdateFactory = async (id: string, factoryInput: Partial<Omit<Factory, 'id' | 'createdAt'>>) => {
+    const updated = factories.map(f => f.id === id ? { ...f, ...factoryInput } as Factory : f);
+    setFactories(updated);
+    saveLocalData('tcm_factories', updated);
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'factories', id), cleanForFirestore(factoryInput));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `factories/${id}`);
+      }
+    }
+
+    addNotification('Factory Updated', `Updated details for ${factoryInput.factoryName || 'Factory'}.`);
+    triggerAutoDriveBackup(drivers, vehicles, updated);
+  };
+
+  const handleDeleteFactory = async (id: string) => {
+    const updated = factories.filter(f => f.id !== id);
+    setFactories(updated);
+    saveLocalData('tcm_factories', updated);
+
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'factories', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `factories/${id}`);
+      }
+    }
+
+    addNotification('Factory Deleted', `Sourcing factory profile removed.`);
+    triggerAutoDriveBackup(drivers, vehicles, updated);
+  };
+
   const handleAddCustomer = async (customerInput: Omit<Customer, 'id' | 'createdAt'>) => {
     const newCustomer: Customer = {
       ...customerInput,
@@ -950,6 +1023,40 @@ export default function App() {
     }
 
     addNotification('Warehouse Added', `Added warehouse location: ${newCustomer.warehouseName}.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, updated);
+  };
+
+  const handleUpdateCustomer = async (id: string, customerInput: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
+    const updated = customers.map(c => c.id === id ? { ...c, ...customerInput } as Customer : c);
+    setCustomers(updated);
+    saveLocalData('tcm_customers', updated);
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'customers', id), cleanForFirestore(customerInput));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `customers/${id}`);
+      }
+    }
+
+    addNotification('Warehouse Updated', `Updated details for ${customerInput.warehouseName || 'Warehouse'}.`);
+    triggerAutoDriveBackup(drivers, vehicles, factories, updated);
+  };
+
+  const handleDeleteCustomer = async (id: string) => {
+    const updated = customers.filter(c => c.id !== id);
+    setCustomers(updated);
+    saveLocalData('tcm_customers', updated);
+
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'customers', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `customers/${id}`);
+      }
+    }
+
+    addNotification('Warehouse Deleted', `Customer warehouse record removed.`);
     triggerAutoDriveBackup(drivers, vehicles, factories, updated);
   };
 
@@ -1681,8 +1788,12 @@ export default function App() {
             onAddVehicle={handleAddVehicle}
             onUpdateDriver={handleUpdateDriver}
             onUpdateVehicle={handleUpdateVehicle}
+            onDeleteDriver={handleDeleteDriver}
+            onDeleteVehicle={handleDeleteVehicle}
             onAddFactory={handleAddFactory} 
             onAddCustomer={handleAddCustomer} 
+            onDeleteFactory={handleDeleteFactory}
+            onDeleteCustomer={handleDeleteCustomer}
             onSyncContact={handleSyncContact}
           />
         )}

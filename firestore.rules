@@ -6,6 +6,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Connection test doc access
+    match /test/{testId} {
+      allow read: if true;
+    }
+
     // 1. DRIVERS collection rules
     match /drivers/{driverId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -56,7 +61,14 @@ service cloud.firestore {
 
     // 9. EMPLOYEES collection rules
     match /employees/{employeeId} {
-      allow create, read, update, delete: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.adminUserId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.adminUserId == request.auth.uid;
+    }
+
+    // Default deny rule
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
+

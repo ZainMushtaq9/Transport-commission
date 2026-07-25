@@ -31,9 +31,73 @@ import {
   query, 
   where, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  getDocFromServer
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+export async function testFirestoreConnection(): Promise<boolean> {
+  if (!isFirebaseConfigured || !db) return false;
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase Firestore connection test successful.");
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration: Client is offline.");
+    } else {
+      console.warn("Firestore connection check status:", error);
+    }
+    return false;
+  }
+}
 
 // Initialize Firebase App with Environment Variables or Fallback to JSON Configuration file
 const env = (import.meta as any).env || {};
@@ -267,14 +331,22 @@ export const changeCurrentUserEmail = async (newEmail: string): Promise<void> =>
 // Employee Firestore Operations
 export const saveEmployeeToFirestore = async (employeeData: any): Promise<void> => {
   if (!isFirebaseConfigured || !db) return;
-  const docRef = doc(db, 'employees', employeeData.id);
-  await setDoc(docRef, employeeData, { merge: true });
+  try {
+    const docRef = doc(db, 'employees', employeeData.id);
+    await setDoc(docRef, employeeData, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `employees/${employeeData.id}`);
+  }
 };
 
 export const deleteEmployeeFromFirestore = async (employeeId: string): Promise<void> => {
   if (!isFirebaseConfigured || !db) return;
-  const docRef = doc(db, 'employees', employeeId);
-  await deleteDoc(docRef);
+  try {
+    const docRef = doc(db, 'employees', employeeId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `employees/${employeeId}`);
+  }
 };
 
 export const subscribeEmployeesFromFirestore = (
@@ -294,6 +366,7 @@ export const subscribeEmployeesFromFirestore = (
     },
     (err) => {
       console.error('Error fetching employees snapshot:', err);
+      handleFirestoreError(err, OperationType.GET, 'employees');
     }
   );
 };

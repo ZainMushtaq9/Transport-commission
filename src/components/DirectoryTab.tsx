@@ -17,7 +17,8 @@ import {
   User,
   Truck,
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { Factory, Customer, Driver, Vehicle } from '../types';
 import DriversTab from './DriversTab';
@@ -32,8 +33,12 @@ interface DirectoryTabProps {
   onAddVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => void;
   onUpdateDriver?: (id: string, driver: Partial<Omit<Driver, 'id' | 'createdAt'>>) => void;
   onUpdateVehicle?: (id: string, vehicle: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => void;
+  onDeleteDriver?: (id: string) => void;
+  onDeleteVehicle?: (id: string) => void;
   onAddFactory: (factory: Omit<Factory, 'id' | 'createdAt'>) => void;
   onAddCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => void;
+  onDeleteFactory?: (id: string) => void;
+  onDeleteCustomer?: (id: string) => void;
   onSyncContact: (fullName: string, phoneNumber: string, role: 'Driver' | 'Factory Manager' | 'Customer Warehouse Manager') => Promise<void>;
 }
 
@@ -47,8 +52,12 @@ export default function DirectoryTab({
   onAddVehicle,
   onUpdateDriver,
   onUpdateVehicle,
+  onDeleteDriver,
+  onDeleteVehicle,
   onAddFactory,
   onAddCustomer,
+  onDeleteFactory,
+  onDeleteCustomer,
   onSyncContact
 }: DirectoryTabProps) {
   const [subTab, setSubTab] = useState<'drivers' | 'factories' | 'customers'>('drivers');
@@ -207,6 +216,8 @@ export default function DirectoryTab({
           onAddVehicle={onAddVehicle}
           onUpdateDriver={onUpdateDriver}
           onUpdateVehicle={onUpdateVehicle}
+          onDeleteDriver={onDeleteDriver}
+          onDeleteVehicle={onDeleteVehicle}
         />
       ) : (
         <>
@@ -250,18 +261,34 @@ export default function DirectoryTab({
                     <p className="text-xs text-slate-500 font-semibold">Manager: {f.managerName}</p>
                   </div>
 
-                  {/* Sync with Google contacts button */}
-                  <button
-                    onClick={() => triggerContactSync(f.id, f.managerName, f.phone, 'Factory Manager')}
-                    className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
-                      syncFeedback[f.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                      syncFeedback[f.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
-                      'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
-                    }`}
-                  >
-                    <Share2 size={12} />
-                    {syncFeedback[f.id] === 'done' ? 'Synced Contacts' : syncFeedback[f.id] === 'syncing' ? 'Syncing...' : 'Sync to Google'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Sync with Google contacts button */}
+                    <button
+                      onClick={() => triggerContactSync(f.id, f.managerName, f.phone, 'Factory Manager')}
+                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
+                        syncFeedback[f.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                        syncFeedback[f.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
+                        'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
+                      }`}
+                    >
+                      <Share2 size={12} />
+                      {syncFeedback[f.id] === 'done' ? 'Synced' : syncFeedback[f.id] === 'syncing' ? 'Syncing...' : 'Sync'}
+                    </button>
+
+                    {onDeleteFactory && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete factory profile "${f.factoryName}"?`)) {
+                            onDeleteFactory(f.id);
+                          }
+                        }}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Delete Factory"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">
@@ -291,18 +318,34 @@ export default function DirectoryTab({
                     <p className="text-xs text-slate-500 font-semibold">Company: {c.company} · {c.city}</p>
                   </div>
 
-                  {/* Sync to Contacts */}
-                  <button
-                    onClick={() => triggerContactSync(c.id, `${c.warehouseName} Manager`, c.phone, 'Customer Warehouse Manager')}
-                    className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
-                      syncFeedback[c.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                      syncFeedback[c.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
-                      'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
-                    }`}
-                  >
-                    <Share2 size={12} />
-                    {syncFeedback[c.id] === 'done' ? 'Synced Contacts' : syncFeedback[c.id] === 'syncing' ? 'Syncing...' : 'Sync to Google'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Sync to Contacts */}
+                    <button
+                      onClick={() => triggerContactSync(c.id, `${c.warehouseName} Manager`, c.phone, 'Customer Warehouse Manager')}
+                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
+                        syncFeedback[c.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                        syncFeedback[c.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
+                        'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
+                      }`}
+                    >
+                      <Share2 size={12} />
+                      {syncFeedback[c.id] === 'done' ? 'Synced' : syncFeedback[c.id] === 'syncing' ? 'Syncing...' : 'Sync'}
+                    </button>
+
+                    {onDeleteCustomer && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete customer warehouse profile "${c.warehouseName}"?`)) {
+                            onDeleteCustomer(c.id);
+                          }
+                        }}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Delete Warehouse"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">

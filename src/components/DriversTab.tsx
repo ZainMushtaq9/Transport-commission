@@ -36,6 +36,8 @@ interface DriversTabProps {
   onAddVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => void;
   onUpdateDriver?: (id: string, driver: Partial<Omit<Driver, 'id' | 'createdAt'>>) => void;
   onUpdateVehicle?: (id: string, vehicle: Partial<Omit<Vehicle, 'id' | 'createdAt'>>) => void;
+  onDeleteDriver?: (id: string) => void;
+  onDeleteVehicle?: (id: string) => void;
 }
 
 export default function DriversTab({
@@ -44,7 +46,9 @@ export default function DriversTab({
   onAddDriver,
   onAddVehicle,
   onUpdateDriver,
-  onUpdateVehicle
+  onUpdateVehicle,
+  onDeleteDriver,
+  onDeleteVehicle
 }: DriversTabProps) {
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showAddDriver, setShowAddDriver] = useState(false);
@@ -429,6 +433,20 @@ export default function DriversTab({
                 >
                   <Edit2 size={12} /> Edit Profile
                 </button>
+                {onDeleteDriver && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete driver "${selectedDriver.fullName}" and remove profile?`)) {
+                        onDeleteDriver(selectedDriver.id);
+                        setSelectedDriver(null);
+                      }
+                    }}
+                    className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                    title="Delete Driver"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <button
                   onClick={() => handleShareProfileText(selectedDriver)}
                   className="text-slate-500 hover:text-slate-700 p-1.5 hover:bg-slate-50 rounded-lg"
@@ -589,6 +607,19 @@ export default function DriversTab({
                         >
                           <Edit2 size={12} />
                         </button>
+                        {onDeleteVehicle && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete vehicle ${v.registrationNumber}?`)) {
+                                onDeleteVehicle(v.id);
+                              }
+                            }}
+                            className="p-1 text-rose-500 hover:bg-rose-100 rounded-lg transition-all"
+                            title="Delete Vehicle"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
                     
