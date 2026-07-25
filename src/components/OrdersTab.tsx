@@ -42,6 +42,8 @@ interface OrdersTabProps {
   onUpdateBooking?: (id: string, booking: Partial<Omit<Booking, 'id' | 'createdAt'>>) => void;
   onDeleteBooking?: (id: string) => void;
   onUpdateBookingStatus?: (id: string, status: Booking['status']) => void;
+  onAddFactory?: (factory: Omit<Factory, 'id' | 'createdAt'>) => Promise<Factory>;
+  onAddCustomer?: (customer: Omit<Customer, 'id' | 'createdAt'>) => Promise<Customer>;
 }
 
 export default function OrdersTab({
@@ -54,7 +56,9 @@ export default function OrdersTab({
   onAddBooking,
   onUpdateBooking,
   onDeleteBooking,
-  onUpdateBookingStatus
+  onUpdateBookingStatus,
+  onAddFactory,
+  onAddCustomer
 }: OrdersTabProps) {
   // Global Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,6 +102,13 @@ export default function OrdersTab({
   const [stopLocation, setStopLocation] = useState('');
   const [bookingTime, setBookingTime] = useState(new Date().toTimeString().split(' ')[0].slice(0, 5));
 
+  // Factory & Customer Selection Mode (Select existing OR Enter custom)
+  const [factoryMode, setFactoryMode] = useState<'select' | 'new'>('select');
+  const [customFactoryName, setCustomFactoryName] = useState('');
+  const [customerMode, setCustomerMode] = useState<'select' | 'new'>('select');
+  const [customCustomerName, setCustomCustomerName] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
   // Reset form fields
   const resetForm = () => {
     setDriverId('');
@@ -123,6 +134,12 @@ export default function OrdersTab({
     setStopLocation('');
     setBookingTime(new Date().toTimeString().split(' ')[0].slice(0, 5));
 
+    setFactoryMode('select');
+    setCustomFactoryName('');
+    setCustomerMode('select');
+    setCustomCustomerName('');
+    setFormError(null);
+
     setEditingBooking(null);
   };
 
@@ -131,6 +148,9 @@ export default function OrdersTab({
     if (selectedDate) {
       setBookingDate(selectedDate);
     }
+    // Auto-generate initial unique Bilti No
+    const nextBilti = `BLT-${Math.floor(100000 + Math.random() * 900000)}`;
+    setBiltiNo(nextBilti);
     setShowFormModal(true);
   };
 
@@ -159,11 +179,22 @@ export default function OrdersTab({
     setStopLocation(booking.stopLocation || '');
     setBookingTime(booking.bookingTime || '');
 
+    setFactoryMode('select');
+    setCustomFactoryName('');
+    setCustomerMode('select');
+    setCustomCustomerName('');
+    setFormError(null);
+
     setShowFormModal(true);
   };
 
   const handleDriverChange = (id: string) => {
     setDriverId(id);
+    const d = drivers.find(drv => drv.id === id);
+    if (d) {
+      if (!phone1) setPhone1(d.phoneNumber || d.driverPhone1 || '');
+      if (!phone2) setPhone2(d.whatsAppNumber || d.driverPhone2 || '');
+    }
     const driverVehicles = vehicles.filter(v => v.driverId === id);
     if (driverVehicles.length > 0) {
       setVehicleId(driverVehicles[0].id);
@@ -173,14 +204,95 @@ export default function OrdersTab({
     }
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    // 1. Validate Bilti No. Uniqueness and Requirement
+    const trimmedBilti = biltiNo.trim();
+    if (!trimmedBilti) {
+      setFormError('Bilti Number is required.');
+      return;
+    }
+
+    const isDuplicate = bookings.some(
+      b => (b.biltiNo || '').trim().toLowerCase() === trimmedBilti.toLowerCase() && b.id !== editingBooking?.id
+    );
+
+    if (isDuplicate) {
+      setFormError(`Bilti Number "${trimmedBilti}" is already assigned to another order. Please enter a unique Bilti No.`);
+      return;
+    }
+
+    // 2. Resolve Factory Pickup Location
+    let resolvedFactoryId = factoryId;
+    if (factoryMode === 'new') {
+      const trimmedFac = customFactoryName.trim();
+      if (!trimmedFac) {
+        setFormError('Please enter a Pickup Location (Factory) name.');
+        return;
+      }
+      // Check if factory name exists in Directory
+      const existingFac = factories.find(f => f.factoryName.trim().toLowerCase() === trimmedFac.toLowerCase());
+      if (existingFac) {
+        resolvedFactoryId = existingFac.id;
+      } else if (onAddFactory) {
+        // Auto-create factory record in directory
+        const created = await onAddFactory({
+          factoryName: trimmedFac,
+          managerName: '',
+          phone: '',
+          address: '',
+          notes: ''
+        });
+        resolvedFactoryId = created.id;
+      }
+    } else {
+      if (!factoryId) {
+        setFormError('Please select a Pickup Location (Factory).');
+        return;
+      }
+    }
+
+    // 3. Resolve Customer Destination Warehouse
+    let resolvedCustomerId = customerId;
+    if (customerMode === 'new') {
+      const trimmedCust = customCustomerName.trim();
+      if (!trimmedCust) {
+        setFormError('Please enter a Destination (Customer Warehouse) name.');
+        return;
+      }
+      // Check if customer exists in Directory
+      const existingCust = customers.find(c => 
+        c.warehouseName.trim().toLowerCase() === trimmedCust.toLowerCase() ||
+        c.company.trim().toLowerCase() === trimmedCust.toLowerCase()
+      );
+      if (existingCust) {
+        resolvedCustomerId = existingCust.id;
+      } else if (onAddCustomer) {
+        // Auto-create customer record in directory
+        const created = await onAddCustomer({
+          warehouseName: trimmedCust,
+          company: companyName.trim() || trimmedCust,
+          phone: '',
+          address: '',
+          city: '',
+          notes: ''
+        });
+        resolvedCustomerId = created.id;
+      }
+    } else {
+      if (!customerId) {
+        setFormError('Please select a Destination (Customer Warehouse).');
+        return;
+      }
+    }
 
     const orderData = {
       driverId,
       vehicleId,
-      factoryId,
-      customerId,
+      factoryId: resolvedFactoryId,
+      customerId: resolvedCustomerId,
       bookingDate: bookingDate || new Date().toISOString().split('T')[0],
       product,
       weight: parseFloat(weight) || 0,
@@ -189,9 +301,9 @@ export default function OrdersTab({
       status,
       deliveryDate: bookingDate,
       notes,
-      biltiNo: biltiNo || `B-${Math.floor(10000 + Math.random() * 90000)}`,
+      biltiNo: trimmedBilti,
       companyName,
-      receiverName,
+      receiverName: receiverName || (customerMode === 'new' ? customCustomerName : (customers.find(c => c.id === resolvedCustomerId)?.warehouseName || '')),
       gariFeet,
       dariNo,
       vehicleModel,
@@ -709,8 +821,15 @@ export default function OrdersTab({
             </div>
 
             <form onSubmit={handleSubmitForm} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
-              {/* Section 1: Date, Bilti, Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {formError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl flex items-center gap-2 font-semibold">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* Section 1: Booking Date, Time, Bilti, Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Booking Date *</label>
                   <input
@@ -718,108 +837,282 @@ export default function OrdersTab({
                     required
                     value={bookingDate}
                     onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Bilti Number</label>
+                  <label className="block text-slate-700 font-bold mb-1">Booking Time *</label>
+                  <input
+                    type="time"
+                    required
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Bilti No. (Unique) *</label>
                   <input
                     type="text"
-                    placeholder="Auto-generated if empty"
+                    required
+                    placeholder="e.g. BLT-10293"
                     value={biltiNo}
                     onChange={(e) => setBiltiNo(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white font-mono font-bold text-blue-700 focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Order Status</label>
+                  <label className="block text-slate-700 font-bold mb-1">Order Status *</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as Booking['status'])}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden font-bold"
                   >
                     <option value="Pending">Pending</option>
                     <option value="In Transit">In Transit</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
+                    <option value="Completed">Completed</option>
                   </select>
                 </div>
               </div>
 
-              {/* Section 2: Fleet Selection (Driver & Vehicle) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Driver *</label>
-                  <select
-                    required
-                    value={driverId}
-                    onChange={(e) => handleDriverChange(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
-                  >
-                    <option value="">Select Driver</option>
-                    {drivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.fullName} ({d.phoneNumber || 'No phone'})</option>
-                    ))}
-                  </select>
+              {/* Section 2: Fleet & Driver Details */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                  <User size={14} className="text-blue-600" /> Driver & Vehicle Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Driver Name *</label>
+                    <select
+                      required
+                      value={driverId}
+                      onChange={(e) => handleDriverChange(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    >
+                      <option value="">Select Driver</option>
+                      {drivers.map(d => (
+                        <option key={d.id} value={d.id}>{d.fullName}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Driver Phone 1 *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Primary phone"
+                      value={phone1}
+                      onChange={(e) => setPhone1(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Driver Phone 2</label>
+                    <input
+                      type="tel"
+                      placeholder="Secondary / WhatsApp"
+                      value={phone2}
+                      onChange={(e) => setPhone2(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Vehicle *</label>
-                  <select
-                    required
-                    value={vehicleId}
-                    onChange={(e) => {
-                      setVehicleId(e.target.value);
-                      const v = vehicles.find(veh => veh.id === e.target.value);
-                      if (v?.model) setVehicleModel(v.model);
-                    }}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
-                  >
-                    <option value="">Select Vehicle</option>
-                    {vehicles.map(v => (
-                      <option key={v.id} value={v.id}>{v.registrationNumber} ({v.vehicleType})</option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Vehicle Reg Number *</label>
+                    <select
+                      required
+                      value={vehicleId}
+                      onChange={(e) => {
+                        setVehicleId(e.target.value);
+                        const v = vehicles.find(veh => veh.id === e.target.value);
+                        if (v?.model) setVehicleModel(v.model);
+                      }}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden font-bold"
+                    >
+                      <option value="">Select Vehicle</option>
+                      {vehicles.map(v => (
+                        <option key={v.id} value={v.id}>{v.registrationNumber} ({v.vehicleType})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Vehicle Model</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Hino 2022"
+                      value={vehicleModel}
+                      onChange={(e) => setVehicleModel(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Vehicle Size (Feet)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 20ft, 40ft, 10 Wheeler"
+                      value={gariFeet}
+                      onChange={(e) => setGariFeet(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Section 3: Route Selection (Pickup Factory & Customer Destination) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Pickup Location (Factory) *</label>
-                  <select
-                    required
-                    value={factoryId}
-                    onChange={(e) => setFactoryId(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
-                  >
-                    <option value="">Select Factory / Source</option>
-                    {factories.map(f => (
-                      <option key={f.id} value={f.id}>{f.factoryName} ({f.address || 'Address N/A'})</option>
-                    ))}
-                  </select>
+              {/* Section 3: Route Locations (Pickup Factory & Customer Warehouse) */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                  <MapPin size={14} className="text-emerald-600" /> Route Locations (Auto-adds to Directory if new)
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Pickup Factory */}
+                  <div className="space-y-1.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-800 font-bold text-xs">Pickup Location (Factory) *</label>
+                      <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setFactoryMode('select')}
+                          className={`px-2 py-0.5 rounded-md transition-all ${factoryMode === 'select' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'}`}
+                        >
+                          Directory
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFactoryMode('new')}
+                          className={`px-2 py-0.5 rounded-md transition-all ${factoryMode === 'new' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'}`}
+                        >
+                          + New
+                        </button>
+                      </div>
+                    </div>
+
+                    {factoryMode === 'select' ? (
+                      <select
+                        required
+                        value={factoryId}
+                        onChange={(e) => setFactoryId(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                      >
+                        <option value="">Select Existing Factory</option>
+                        {factories.map(f => (
+                          <option key={f.id} value={f.id}>{f.factoryName} {f.address ? `(${f.address})` : ''}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter New Factory Name..."
+                        value={customFactoryName}
+                        onChange={(e) => setCustomFactoryName(e.target.value)}
+                        className="w-full p-2 border border-emerald-300 rounded-xl bg-emerald-50/40 focus:bg-white focus:border-emerald-500 focus:outline-hidden font-semibold"
+                      />
+                    )}
+                    <p className="text-[10px] text-slate-400">
+                      {factoryMode === 'new' ? 'Will auto-create Factory record in Directory upon save.' : 'Selects from existing directory.'}
+                    </p>
+                  </div>
+
+                  {/* Customer Warehouse Destination */}
+                  <div className="space-y-1.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-800 font-bold text-xs">Destination (Customer Warehouse) *</label>
+                      <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setCustomerMode('select')}
+                          className={`px-2 py-0.5 rounded-md transition-all ${customerMode === 'select' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'}`}
+                        >
+                          Directory
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomerMode('new')}
+                          className={`px-2 py-0.5 rounded-md transition-all ${customerMode === 'new' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500'}`}
+                        >
+                          + New
+                        </button>
+                      </div>
+                    </div>
+
+                    {customerMode === 'select' ? (
+                      <select
+                        required
+                        value={customerId}
+                        onChange={(e) => setCustomerId(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                      >
+                        <option value="">Select Existing Customer / Warehouse</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>{c.warehouseName} {c.company ? `(${c.company})` : ''}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter New Customer / Warehouse Name..."
+                        value={customCustomerName}
+                        onChange={(e) => setCustomCustomerName(e.target.value)}
+                        className="w-full p-2 border border-emerald-300 rounded-xl bg-emerald-50/40 focus:bg-white focus:border-emerald-500 focus:outline-hidden font-semibold"
+                      />
+                    )}
+                    <p className="text-[10px] text-slate-400">
+                      {customerMode === 'new' ? 'Will auto-create Customer record in Directory upon save.' : 'Selects from existing directory.'}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Destination (Customer Warehouse) *</label>
-                  <select
-                    required
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
-                  >
-                    <option value="">Select Warehouse / Destination</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.warehouseName} ({c.city || 'City N/A'})</option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="Client or Sourcing Company"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Customer / Receiver Contact</label>
+                    <input
+                      type="text"
+                      placeholder="Receiver Person Name"
+                      value={receiverName}
+                      onChange={(e) => setReceiverName(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Unloading Location Details</label>
+                    <input
+                      type="text"
+                      placeholder="City / Area stop"
+                      value={stopLocation}
+                      onChange={(e) => setStopLocation(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Section 4: Cargo Product & Weight */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Section 4: Cargo Product & Financials */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-blue-50/40 p-3 rounded-xl border border-blue-100">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Cargo Product</label>
                   <input
@@ -827,7 +1120,7 @@ export default function OrdersTab({
                     placeholder="e.g. Cement, Steel, Rice"
                     value={product}
                     onChange={(e) => setProduct(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -839,28 +1132,15 @@ export default function OrdersTab({
                     placeholder="0.0"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Gari Feet / Dimensions</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 20ft, 40ft"
-                    value={gariFeet}
-                    onChange={(e) => setGariFeet(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
-              {/* Section 5: Financials (Fare & Commission) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                <div>
-                  <label className="block text-slate-800 font-bold mb-1">Total Fare (Rs.)</label>
+                  <label className="block text-slate-800 font-bold mb-1">Total Fare (Kiraya) Rs. *</label>
                   <input
                     type="number"
+                    required
                     placeholder="0"
                     value={fare}
                     onChange={(e) => setFare(e.target.value)}
@@ -869,9 +1149,10 @@ export default function OrdersTab({
                 </div>
 
                 <div>
-                  <label className="block text-slate-800 font-bold mb-1">Commission (Rs.)</label>
+                  <label className="block text-slate-800 font-bold mb-1">Commission Rs. *</label>
                   <input
                     type="number"
+                    required
                     placeholder="0"
                     value={commission}
                     onChange={(e) => setCommission(e.target.value)}
@@ -880,47 +1161,12 @@ export default function OrdersTab({
                 </div>
               </div>
 
-              {/* Section 6: Additional Bilti Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Company Name</label>
-                  <input
-                    type="text"
-                    placeholder="Transport Company"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Receiver Name</label>
-                  <input
-                    type="text"
-                    placeholder="Receiver Contact"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Destination Address</label>
-                  <input
-                    type="text"
-                    placeholder="Unloading stop"
-                    value={stopLocation}
-                    onChange={(e) => setStopLocation(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
+              {/* Section 5: Notes */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Order Notes / Instructions</label>
+                <label className="block text-slate-700 font-bold mb-1">Order Notes (Optional)</label>
                 <textarea
                   rows={2}
-                  placeholder="Special unloading requirements..."
+                  placeholder="Special instructions or remarks..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-hidden"
@@ -939,7 +1185,7 @@ export default function OrdersTab({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm"
                 >
-                  {editingBooking ? 'Save Order Changes' : 'Create Order'}
+                  {editingBooking ? 'Save Order Changes' : 'Create Transport Order'}
                 </button>
               </div>
             </form>

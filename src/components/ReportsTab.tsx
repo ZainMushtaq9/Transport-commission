@@ -1,4 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { 
   FileText, 
   Download, 
@@ -17,7 +20,8 @@ import {
   Warehouse,
   Briefcase,
   ShieldAlert,
-  BarChart3
+  BarChart3,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Booking, Commission, Expense, Driver, Vehicle, Factory, Customer } from '../types';
 
@@ -150,103 +154,183 @@ export default function ReportsTab({
   const netProfit = totalCommissionEarned - totalExpensesAmount;
   const totalTonnage = useMemo(() => filteredBookings.reduce((sum, b) => sum + (Number(b.weight) || 0), 0), [filteredBookings]);
 
-  // Print helper
-  const handlePrintReport = () => {
-    window.print();
-  };
-
-  // CSV Export helper
-  const handleExportCSV = () => {
+  // Extract structured report data for PDF, Excel, and CSV export
+  const getReportData = () => {
+    let title = 'Business Summary';
     let headers: string[] = [];
     let rows: (string | number)[][] = [];
-    let filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}.csv`;
 
-    if (reportType === 'earnings' || reportType === 'orders') {
-      headers = ['Booking ID', 'Date', 'Product', 'Driver', 'Vehicle', 'Factory', 'Customer', 'Fare (PKR)', 'Commission (PKR)', 'Status'];
+    if (reportType === 'earnings' || reportType === 'orders' || reportType === 'summary') {
+      title = reportType === 'earnings' ? 'Earnings & Revenue Report' : reportType === 'orders' ? 'Transport Orders Report' : 'Business Summary Report';
+      headers = ['Booking Date', 'Bilti No', 'Product', 'Weight (Tons)', 'Driver', 'Vehicle', 'Factory', 'Customer / Warehouse', 'Fare (Rs.)', 'Commission (Rs.)', 'Status'];
       rows = filteredBookings.map(b => [
-        b.id,
-        b.bookingDate,
-        `"${b.product || ''}"`,
-        `"${drivers.find(d => d.id === b.driverId)?.fullName || 'N/A'}"`,
-        `"${vehicles.find(v => v.id === b.vehicleId)?.registrationNumber || 'N/A'}"`,
-        `"${factories.find(f => f.id === b.factoryId)?.factoryName || 'N/A'}"`,
-        `"${customers.find(c => c.id === b.customerId)?.warehouseName || 'N/A'}"`,
+        b.bookingDate || '',
+        b.biltiNo || '',
+        b.product || '',
+        b.weight || 0,
+        drivers.find(d => d.id === b.driverId)?.fullName || 'N/A',
+        vehicles.find(v => v.id === b.vehicleId)?.registrationNumber || 'N/A',
+        factories.find(f => f.id === b.factoryId)?.factoryName || 'N/A',
+        customers.find(c => c.id === b.customerId)?.warehouseName || 'N/A',
         b.fare || 0,
         b.commission || 0,
-        b.status
+        b.status || 'Pending'
       ]);
     } else if (reportType === 'expenses') {
-      headers = ['Expense ID', 'Date', 'Category', 'Description', 'Amount (PKR)'];
+      title = 'Operating Expenses Report';
+      headers = ['Expense Date', 'Category', 'Description', 'Amount (Rs.)'];
       rows = filteredExpenses.map(e => [
-        e.id,
-        e.date,
-        e.category,
-        `"${e.description || ''}"`,
+        e.date || '',
+        e.category || '',
+        e.description || '',
         e.amount || 0
       ]);
     } else if (reportType === 'commissions') {
-      headers = ['Commission ID', 'Date', 'Booking ID', 'Fare', 'Commission', 'Payment Status'];
+      title = 'Commission Ledger Report';
+      headers = ['Date', 'Booking ID', 'Bilti No', 'Freight Fare (Rs.)', 'Commission Earned (Rs.)', 'Payment Status'];
       rows = filteredCommissions.map(c => [
-        c.id,
-        c.date,
-        c.bookingId,
+        c.date || '',
+        c.bookingId || '',
+        bookings.find(b => b.id === c.bookingId)?.biltiNo || '',
         c.fare || 0,
         c.commission || 0,
-        c.paymentStatus
+        c.paymentStatus || 'Pending'
       ]);
     } else if (reportType === 'drivers') {
-      headers = ['Driver Name', 'Phone', 'CNIC', 'Total Trips', 'Total Fare Generated', 'Total Commission'];
+      title = 'Driver Performance Ledger';
+      headers = ['Driver Name', 'Phone Number', 'CNIC', 'Total Trips', 'Gross Fare (Rs.)', 'Total Commission (Rs.)'];
       rows = drivers.map(d => {
-        const driverBookings = filteredBookings.filter(b => b.driverId === d.id);
-        const fare = driverBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
-        const comm = driverBookings.reduce((sum, b) => sum + (b.commission || 0), 0);
+        const dBookings = filteredBookings.filter(b => b.driverId === d.id);
+        const fare = dBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
+        const comm = dBookings.reduce((sum, b) => sum + (b.commission || 0), 0);
         return [
-          `"${d.fullName}"`,
-          `"${d.phoneNumber}"`,
-          `"${d.cnicNumber}"`,
-          driverBookings.length,
+          d.fullName,
+          d.phoneNumber || 'N/A',
+          d.cnicNumber || 'N/A',
+          dBookings.length,
           fare,
           comm
         ];
       });
     } else if (reportType === 'vehicles') {
+      title = 'Vehicle Fleet Utilization';
       headers = ['Registration No', 'Type', 'Capacity (Tons)', 'Assigned Driver', 'Fitness Expiry', 'Token Expiry', 'Total Trips'];
       rows = vehicles.map(v => {
         const vBookings = filteredBookings.filter(b => b.vehicleId === v.id);
         const driverName = drivers.find(d => d.id === v.driverId)?.fullName || 'Unassigned';
         return [
-          `"${v.registrationNumber}"`,
-          `"${v.vehicleType}"`,
+          v.registrationNumber,
+          v.vehicleType || '',
           v.capacity || 0,
-          `"${driverName}"`,
+          driverName,
           v.fitnessExpiry || 'N/A',
           v.tokenExpiry || 'N/A',
           vBookings.length
         ];
       });
+    } else if (reportType === 'factories') {
+      title = 'Sourcing Factories Report';
+      headers = ['Factory Name', 'Manager / Contact', 'Phone', 'Address', 'Total Orders Handled', 'Gross Fare (Rs.)'];
+      rows = factories.map(f => {
+        const fBookings = filteredBookings.filter(b => b.factoryId === f.id);
+        const fare = fBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
+        return [
+          f.factoryName,
+          f.managerName || 'N/A',
+          f.phone || 'N/A',
+          f.address || 'N/A',
+          fBookings.length,
+          fare
+        ];
+      });
+    } else if (reportType === 'customers' || reportType === 'warehouses') {
+      title = 'Customers & Warehouses Report';
+      headers = ['Warehouse Name', 'Company Name', 'Contact Phone', 'City / Location', 'Total Orders Received', 'Gross Fare (Rs.)'];
+      rows = customers.map(c => {
+        const cBookings = filteredBookings.filter(b => b.customerId === c.id);
+        const fare = cBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
+        return [
+          c.warehouseName,
+          c.company || 'N/A',
+          c.phone || 'N/A',
+          c.city || 'N/A',
+          cBookings.length,
+          fare
+        ];
+      });
     } else if (reportType === 'vehicle_expiries') {
-      headers = ['Registration No', 'Vehicle Type', 'Fitness Expiry Date', 'Token Expiry Date', 'Notes'];
-      rows = vehicles.map(v => [
-        `"${v.registrationNumber}"`,
-        `"${v.vehicleType}"`,
-        v.fitnessExpiry || 'N/A',
-        v.tokenExpiry || 'N/A',
-        `"${v.notes || ''}"`
-      ]);
-    } else {
-      // Summary CSV
-      headers = ['Metric', 'Value'];
-      rows = [
-        ['Total Bookings', filteredBookings.length],
-        ['Total Cargo Tonnage (Tons)', totalTonnage],
-        ['Total Gross Revenue (PKR)', totalRevenue],
-        ['Total Commission Earned (PKR)', totalCommissionEarned],
-        ['Total Operating Expenses (PKR)', totalExpensesAmount],
-        ['Net Agent Profit (PKR)', netProfit]
-      ];
+      title = 'Vehicle Document Expiries Audit';
+      headers = ['Registration No', 'Vehicle Type', 'Fitness Expiry Date', 'Token Expiry Date', 'Status'];
+      const todayStr = new Date().toISOString().split('T')[0];
+      rows = vehicles.map(v => {
+        const isExpired = (v.fitnessExpiry && v.fitnessExpiry < todayStr) || (v.tokenExpiry && v.tokenExpiry < todayStr);
+        return [
+          v.registrationNumber,
+          v.vehicleType || '',
+          v.fitnessExpiry || 'N/A',
+          v.tokenExpiry || 'N/A',
+          isExpired ? 'DOCUMENT EXPIRED' : 'VALID'
+        ];
+      });
     }
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    return { title, headers, rows };
+  };
+
+  // PDF Export helper
+  const handleExportPDF = () => {
+    const { title, headers, rows } = getReportData();
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // Header Band
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 297, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Transport Operations - ${title}`, 12, 11);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleString()} | Period: ${activeStart || 'All'} to ${activeEnd || 'All'}`, 12, 17);
+
+    autoTable(doc, {
+      startY: 26,
+      head: [headers],
+      body: rows.map(r => r.map(c => String(c))),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 10, right: 10 }
+    });
+
+    doc.save(`${reportType}_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  // Excel Export helper
+  const handleExportExcel = () => {
+    const { title, headers, rows } = getReportData();
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    const colWidths = headers.map((h, i) => {
+      const maxLen = Math.max(h.length, ...rows.map(r => String(r[i] ?? '').length));
+      return { wch: Math.min(Math.max(maxLen + 3, 12), 40) };
+    });
+    ws['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0, 30));
+    XLSX.writeFile(wb, `${reportType}_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // CSV Export helper
+  const handleExportCSV = () => {
+    const { title, headers, rows } = getReportData();
+    const filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}.csv`;
+    const csvContent = 'data:text/csv;charset=utf-8,' + [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -254,6 +338,11 @@ export default function ReportsTab({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Print helper
+  const handlePrintReport = () => {
+    window.print();
   };
 
   return (
@@ -269,22 +358,34 @@ export default function ReportsTab({
               Logistics & Financial Reports
             </h1>
             <p className="text-slate-400 text-xs mt-1 max-w-xl">
-              Export comprehensive audit logs, driver performance, expense ledgers, and vehicle document expiries with custom filters.
+              Export audit logs, performance ledgers, and document expiries in PDF, Excel (.xlsx), CSV, or Print formats with custom date filters.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleExportPDF}
+              className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5 active:scale-95"
+            >
+              <FileText size={15} /> PDF
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95"
+            >
+              <FileSpreadsheet size={15} /> Excel (.xlsx)
+            </button>
             <button
               onClick={handleExportCSV}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95"
+              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <Download size={15} /> Export CSV / Excel
+              <Download size={15} /> CSV
             </button>
             <button
               onClick={handlePrintReport}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-1.5 active:scale-95"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-1.5 active:scale-95"
             >
-              <Printer size={15} /> Print / Save PDF
+              <Printer size={15} /> Print
             </button>
           </div>
         </div>
@@ -695,6 +796,127 @@ export default function ReportsTab({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {reportType === 'factories' && (
+          <div className="space-y-3">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Building2 size={16} className="text-blue-600" /> Sourcing Factories & Pickup Locations Report
+            </h3>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
+                  <tr>
+                    <th className="p-3">Factory Name</th>
+                    <th className="p-3">Manager / Contact</th>
+                    <th className="p-3">Phone</th>
+                    <th className="p-3">Address</th>
+                    <th className="p-3 text-center">Total Orders</th>
+                    <th className="p-3 text-right">Gross Fare Generated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {factories.map(f => {
+                    const fBookings = filteredBookings.filter(b => b.factoryId === f.id);
+                    const fare = fBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
+
+                    return (
+                      <tr key={f.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 font-bold text-slate-900">{f.factoryName}</td>
+                        <td className="p-3">{f.managerName || 'N/A'}</td>
+                        <td className="p-3">{f.phone || 'N/A'}</td>
+                        <td className="p-3">{f.address || 'N/A'}</td>
+                        <td className="p-3 text-center font-bold text-blue-600">{fBookings.length}</td>
+                        <td className="p-3 text-right font-bold text-slate-900">Rs. {fare.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(reportType === 'customers' || reportType === 'warehouses') && (
+          <div className="space-y-3">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Warehouse size={16} className="text-blue-600" /> Customers & Destination Warehouses Report
+            </h3>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
+                  <tr>
+                    <th className="p-3">Warehouse Name</th>
+                    <th className="p-3">Company Name</th>
+                    <th className="p-3">Contact Phone</th>
+                    <th className="p-3">City / Location</th>
+                    <th className="p-3 text-center">Total Orders</th>
+                    <th className="p-3 text-right">Gross Fare Generated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {customers.map(c => {
+                    const cBookings = filteredBookings.filter(b => b.customerId === c.id);
+                    const fare = cBookings.reduce((sum, b) => sum + (b.fare || 0), 0);
+
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 font-bold text-slate-900">{c.warehouseName}</td>
+                        <td className="p-3">{c.company || 'N/A'}</td>
+                        <td className="p-3">{c.phone || 'N/A'}</td>
+                        <td className="p-3">{c.city || 'N/A'}</td>
+                        <td className="p-3 text-center font-bold text-blue-600">{cBookings.length}</td>
+                        <td className="p-3 text-right font-bold text-slate-900">Rs. {fare.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {reportType === 'commissions' && (
+          <div className="space-y-3">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <BarChart3 size={16} className="text-emerald-600" /> Commission Ledger Report
+            </h3>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
+                  <tr>
+                    <th className="p-3">Order Date</th>
+                    <th className="p-3">Bilti Number</th>
+                    <th className="p-3">Cargo Product</th>
+                    <th className="p-3 text-right">Total Freight Fare</th>
+                    <th className="p-3 text-right">Commission Earned</th>
+                    <th className="p-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredBookings.map(b => (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3 font-semibold text-slate-900">{b.bookingDate}</td>
+                      <td className="p-3 font-mono font-bold text-blue-600">{b.biltiNo || 'N/A'}</td>
+                      <td className="p-3">{b.product || 'N/A'}</td>
+                      <td className="p-3 text-right font-bold text-slate-900">Rs. {(b.fare || 0).toLocaleString()}</td>
+                      <td className="p-3 text-right font-bold text-emerald-600">Rs. {(b.commission || 0).toLocaleString()}</td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          b.status === 'Delivered' || b.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

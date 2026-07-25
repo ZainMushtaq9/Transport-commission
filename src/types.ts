@@ -81,7 +81,7 @@ export interface Booking {
   weight: number; // tons
   fare: number;
   commission: number;
-  status: 'Pending' | 'In Transit' | 'Delivered' | 'Cancelled';
+  status: 'Pending' | 'In Transit' | 'Delivered' | 'Cancelled' | 'Completed';
   deliveryDate: string; // YYYY-MM-DD
   notes: string;
   createdAt: string;

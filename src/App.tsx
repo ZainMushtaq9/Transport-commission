@@ -944,7 +944,7 @@ export default function App() {
     triggerAutoDriveBackup(drivers, updated);
   };
 
-  const handleAddFactory = async (factoryInput: Omit<Factory, 'id' | 'createdAt'>) => {
+  const handleAddFactory = async (factoryInput: Omit<Factory, 'id' | 'createdAt'>): Promise<Factory> => {
     const newFactory: Factory = {
       ...factoryInput,
       id: 'fac-' + Math.random().toString(36).substr(2, 9),
@@ -966,6 +966,7 @@ export default function App() {
 
     addNotification('Factory Indexed', `Added sourcing partner: ${newFactory.factoryName}.`);
     triggerAutoDriveBackup(drivers, vehicles, updated);
+    return newFactory;
   };
 
   const handleUpdateFactory = async (id: string, factoryInput: Partial<Omit<Factory, 'id' | 'createdAt'>>) => {
@@ -1002,7 +1003,7 @@ export default function App() {
     triggerAutoDriveBackup(drivers, vehicles, updated);
   };
 
-  const handleAddCustomer = async (customerInput: Omit<Customer, 'id' | 'createdAt'>) => {
+  const handleAddCustomer = async (customerInput: Omit<Customer, 'id' | 'createdAt'>): Promise<Customer> => {
     const newCustomer: Customer = {
       ...customerInput,
       id: 'cust-' + Math.random().toString(36).substr(2, 9),
@@ -1024,6 +1025,7 @@ export default function App() {
 
     addNotification('Warehouse Added', `Added warehouse location: ${newCustomer.warehouseName}.`);
     triggerAutoDriveBackup(drivers, vehicles, factories, updated);
+    return newCustomer;
   };
 
   const handleUpdateCustomer = async (id: string, customerInput: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
@@ -1764,6 +1766,8 @@ export default function App() {
             onUpdateBooking={handleUpdateBooking}
             onDeleteBooking={handleDeleteBooking}
             onUpdateBookingStatus={handleUpdateBookingStatus}
+            onAddFactory={handleAddFactory}
+            onAddCustomer={handleAddCustomer}
           />
         )}
 
