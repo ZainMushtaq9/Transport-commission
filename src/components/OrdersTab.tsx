@@ -828,8 +828,8 @@ export default function OrdersTab({
                 </div>
               )}
 
-              {/* Section 1: Booking Date, Time, Bilti, Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              {/* Section 1: Booking Date, Time, Bilti, Diary No, Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Booking Date *</label>
                   <input
@@ -853,7 +853,7 @@ export default function OrdersTab({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Bilti No. (Unique) *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Bilti No. *</label>
                   <input
                     type="text"
                     required
@@ -865,7 +865,18 @@ export default function OrdersTab({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Order Status *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Diary No.</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. DR-402"
+                    value={dariNo}
+                    onChange={(e) => setDariNo(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-xl bg-white font-mono font-bold text-slate-800 focus:border-blue-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Status *</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as Booking['status'])}
