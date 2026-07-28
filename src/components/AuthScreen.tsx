@@ -56,8 +56,33 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         const user = await signUpWithEmail(email, password, rememberMe);
         onAuthSuccess(user, null);
       } else {
-        const user = await signInWithEmail(email, password, rememberMe);
-        onAuthSuccess(user, null);
+        try {
+          const user = await signInWithEmail(email, password, rememberMe);
+          onAuthSuccess(user, null);
+        } catch (signInErr: any) {
+          // Check if this matches a created Employee account that needs initial Firebase Auth registration
+          const rawEmployees = localStorage.getItem('tcm_employees') || localStorage.getItem('tcm_employees_sandbox');
+          let localEmpList: any[] = [];
+          if (rawEmployees) {
+            try { localEmpList = JSON.parse(rawEmployees); } catch (e) {}
+          }
+          const matchedEmp = localEmpList.find(
+            e => e.email?.trim().toLowerCase() === email.trim().toLowerCase() && e.password?.trim() === password.trim()
+          );
+
+          if (matchedEmp) {
+            try {
+              const user = await signUpWithEmail(email, password, rememberMe);
+              onAuthSuccess(user, null);
+              return;
+            } catch (signUpErr) {
+              const user = await signInWithEmail(email, password, rememberMe);
+              onAuthSuccess(user, null);
+              return;
+            }
+          }
+          throw signInErr;
+        }
       }
     } catch (err: any) {
       console.error(err);

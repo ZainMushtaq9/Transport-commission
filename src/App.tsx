@@ -349,8 +349,32 @@ export default function App() {
       try {
         await testFirestoreConnection();
 
-        // 1. Check if Firestore contains any data for this user
-        const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', user.uid)));
+        // Resolve effective company UID (if employee is logged in, use their company admin's UID)
+        let effectiveCompanyUid = user.uid;
+        try {
+          const rawEmps = localStorage.getItem('tcm_employees') || localStorage.getItem(`tcm_employees_${user.uid}`) || localStorage.getItem('tcm_employees_sandbox');
+          let localEmps: Employee[] = [];
+          if (rawEmps) {
+            try { localEmps = JSON.parse(rawEmps); } catch (e) {}
+          }
+          const matchedEmp = localEmps.find(e => e.email?.toLowerCase().trim() === user.email?.toLowerCase().trim());
+          if (matchedEmp?.adminUserId) {
+            effectiveCompanyUid = matchedEmp.adminUserId;
+          } else if (user.email) {
+            const empSnap = await getDocs(query(collection(db, 'employees'), where('email', '==', user.email.toLowerCase().trim())));
+            if (!empSnap.empty) {
+              const empData = empSnap.docs[0].data() as Employee;
+              if (empData.adminUserId) {
+                effectiveCompanyUid = empData.adminUserId;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Could not resolve company admin UID, fallback to user.uid', e);
+        }
+
+        // 1. Check if Firestore contains any data for this company
+        const driversSnap = await getDocs(query(collection(db, 'drivers'), where('userId', '==', effectiveCompanyUid)));
         const hasFirestoreData = !driversSnap.empty;
 
         // If Firestore is empty, check for local offline data and sync to Firestore
@@ -381,7 +405,7 @@ export default function App() {
                                localExpenses.length > 0;
 
           if (hasLocalData && isSubscribed) {
-            console.log('Uploading local state to Firestore for user:', user.uid);
+            console.log('Uploading local state to Firestore for user:', effectiveCompanyUid);
             const batchToSync = {
               drivers: localDrivers,
               vehicles: localVehicles,
@@ -397,80 +421,80 @@ export default function App() {
               for (const item of list as any[]) {
                 if (!item || !item.id) continue;
                 const docRef = doc(db, colName, item.id);
-                await setDoc(docRef, await cleanForFirestore({ ...item, userId: user.uid }), { merge: true });
+                await setDoc(docRef, await cleanForFirestore({ ...item, userId: effectiveCompanyUid }), { merge: true });
               }
             }
             console.log('Local state successfully uploaded to Firestore!');
           }
         }
+
+        if (!isSubscribed) return;
+
+        // 2. Establish onSnapshot listeners using effectiveCompanyUid so employees view shared company data
+        const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
+          setDrivers(data);
+          saveLocalData('tcm_drivers', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'drivers'));
+        unsubs.push(unsubDrivers);
+
+        const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+          setVehicles(data);
+          saveLocalData('tcm_vehicles', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'vehicles'));
+        unsubs.push(unsubVehicles);
+
+        const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
+          setFactories(data);
+          saveLocalData('tcm_factories', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'factories'));
+        unsubs.push(unsubFactories);
+
+        const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+          setCustomers(data);
+          saveLocalData('tcm_customers', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'customers'));
+        unsubs.push(unsubCustomers);
+
+        const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+          setBookings(data);
+          saveLocalData('tcm_bookings', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'bookings'));
+        unsubs.push(unsubBookings);
+
+        const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
+          setCommissions(data);
+          saveLocalData('tcm_commissions', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'commissions'));
+        unsubs.push(unsubCommissions);
+
+        const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+          setExpenses(data);
+          saveLocalData('tcm_expenses', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'expenses'));
+        unsubs.push(unsubExpenses);
+
+        const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', effectiveCompanyUid)), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
+          setNotifications(data);
+          saveLocalData('tcm_notifications', data);
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
+        unsubs.push(unsubNotifications);
+
+        const unsubEmployees = subscribeEmployeesFromFirestore(effectiveCompanyUid, (empData) => {
+          setEmployees(empData);
+          saveLocalData('tcm_employees', empData);
+        });
+        if (unsubEmployees) unsubs.push(unsubEmployees);
       } catch (err) {
         console.error('Error checking/uploading local data to Firestore:', err);
       }
-
-      if (!isSubscribed) return;
-
-      // 2. Establish onSnapshot listeners with error callbacks
-      const unsubDrivers = onSnapshot(query(collection(db, 'drivers'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Driver));
-        setDrivers(data);
-        saveLocalData('tcm_drivers', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'drivers'));
-      unsubs.push(unsubDrivers);
-
-      const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-        setVehicles(data);
-        saveLocalData('tcm_vehicles', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'vehicles'));
-      unsubs.push(unsubVehicles);
-
-      const unsubFactories = onSnapshot(query(collection(db, 'factories'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Factory));
-        setFactories(data);
-        saveLocalData('tcm_factories', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'factories'));
-      unsubs.push(unsubFactories);
-
-      const unsubCustomers = onSnapshot(query(collection(db, 'customers'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-        setCustomers(data);
-        saveLocalData('tcm_customers', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'customers'));
-      unsubs.push(unsubCustomers);
-
-      const unsubBookings = onSnapshot(query(collection(db, 'bookings'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
-        setBookings(data);
-        saveLocalData('tcm_bookings', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'bookings'));
-      unsubs.push(unsubBookings);
-
-      const unsubCommissions = onSnapshot(query(collection(db, 'commissions'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commission));
-        setCommissions(data);
-        saveLocalData('tcm_commissions', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'commissions'));
-      unsubs.push(unsubCommissions);
-
-      const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
-        setExpenses(data);
-        saveLocalData('tcm_expenses', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'expenses'));
-      unsubs.push(unsubExpenses);
-
-      const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), where('userId', '==', user.uid)), (snap) => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as NotificationRef));
-        setNotifications(data);
-        saveLocalData('tcm_notifications', data);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
-      unsubs.push(unsubNotifications);
-
-      const unsubEmployees = subscribeEmployeesFromFirestore(user.uid, (empData) => {
-        setEmployees(empData);
-        saveLocalData('tcm_employees', empData);
-      });
-      if (unsubEmployees) unsubs.push(unsubEmployees);
     };
 
     initFirestoreSync();
@@ -1823,6 +1847,8 @@ export default function App() {
             onDeleteVehicle={handleDeleteVehicle}
             onAddFactory={handleAddFactory} 
             onAddCustomer={handleAddCustomer} 
+            onUpdateFactory={handleUpdateFactory}
+            onUpdateCustomer={handleUpdateCustomer}
             onDeleteFactory={handleDeleteFactory}
             onDeleteCustomer={handleDeleteCustomer}
             onSyncContact={handleSyncContact}

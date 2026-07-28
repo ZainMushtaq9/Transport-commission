@@ -109,6 +109,73 @@ export default function OrdersTab({
   const [customCustomerName, setCustomCustomerName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Driver Search & Selection State
+  const [showDriverPicker, setShowDriverPicker] = useState(false);
+  const [driverSearchTerm, setDriverSearchTerm] = useState('');
+
+  // Calculate most recently used drivers based on booking history
+  const recentDrivers = useMemo(() => {
+    const sortedBookings = [...bookings].sort((a, b) => {
+      const dateA = new Date(a.bookingDate || a.createdAt || 0).getTime();
+      const dateB = new Date(b.bookingDate || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    const recentIds: string[] = [];
+    sortedBookings.forEach(b => {
+      if (b.driverId && !recentIds.includes(b.driverId)) {
+        recentIds.push(b.driverId);
+      }
+    });
+
+    const result: Driver[] = [];
+    recentIds.forEach(id => {
+      const d = drivers.find(drv => drv.id === id);
+      if (d) result.push(d);
+    });
+
+    if (result.length < 5) {
+      const remaining = [...drivers]
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .filter(d => !result.some(r => r.id === d.id));
+      result.push(...remaining);
+    }
+
+    return result.slice(0, 5);
+  }, [bookings, drivers]);
+
+  // Filtered drivers for search picker (show ONLY recent drivers when query is empty)
+  const filteredDriversForPicker = useMemo(() => {
+    const query = driverSearchTerm.trim().toLowerCase();
+    if (!query) {
+      return recentDrivers;
+    }
+
+    return drivers.filter(d => {
+      const nameMatch = (d.fullName || '').toLowerCase().includes(query);
+      const phoneMatch = (
+        (d.phoneNumber || '') + ' ' +
+        (d.whatsAppNumber || '') + ' ' +
+        (d.driverPhone1 || '') + ' ' +
+        (d.driverPhone2 || '') + ' ' +
+        (d.driverPhone3 || '')
+      ).toLowerCase().includes(query);
+      const cnicMatch = (d.cnicNumber || '').toLowerCase().includes(query);
+
+      const driverVehicles = vehicles.filter(v => v.driverId === d.id);
+      const vehicleRegMatch = driverVehicles.some(v => 
+        (v.registrationNumber || '').toLowerCase().includes(query) ||
+        (v.model || '').toLowerCase().includes(query)
+      );
+
+      return nameMatch || phoneMatch || cnicMatch || vehicleRegMatch;
+    });
+  }, [driverSearchTerm, recentDrivers, drivers, vehicles]);
+
+  const selectedDriver = useMemo(() => {
+    return drivers.find(d => d.id === driverId);
+  }, [drivers, driverId]);
+
   // Reset form fields
   const resetForm = () => {
     setDriverId('');
@@ -139,6 +206,9 @@ export default function OrdersTab({
     setCustomerMode('select');
     setCustomCustomerName('');
     setFormError(null);
+
+    setShowDriverPicker(false);
+    setDriverSearchTerm('');
 
     setEditingBooking(null);
   };
@@ -896,42 +966,96 @@ export default function OrdersTab({
                 <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
                   <User size={14} className="text-blue-600" /> Driver & Vehicle Information
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Driver Name *</label>
-                    <select
-                      required
-                      value={driverId}
-                      onChange={(e) => handleDriverChange(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
-                    >
-                      <option value="">Select Driver</option>
-                      {drivers.map(d => (
-                        <option key={d.id} value={d.id}>{d.fullName}</option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Driver Selection Card / Trigger Button */}
+                <div className="space-y-2">
+                  <label className="block text-slate-700 font-bold text-xs">Driver Selection *</label>
+                  {selectedDriver ? (
+                    <div className="bg-white p-3 rounded-2xl border border-blue-200 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
+                            {selectedDriver.photo ? (
+                              <img src={selectedDriver.photo} alt={selectedDriver.fullName} className="w-full h-full object-cover" />
+                            ) : (
+                              selectedDriver.fullName.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-bold text-slate-800 text-xs truncate">{selectedDriver.fullName}</h5>
+                              <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+                                SELECTED
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                              📞 {selectedDriver.phoneNumber || selectedDriver.driverPhone1 || 'No Phone'}
+                              {selectedDriver.cnicNumber ? ` • 🪪 CNIC: ${selectedDriver.cnicNumber}` : ''}
+                            </p>
+                          </div>
+                        </div>
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDriverSearchTerm('');
+                            setShowDriverPicker(true);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1.5 border border-blue-200 transition-all shrink-0 active:scale-95 cursor-pointer"
+                        >
+                          <Search size={14} />
+                          <span>Search / Change Driver</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDriverSearchTerm('');
+                        setShowDriverPicker(true);
+                      }}
+                      className="w-full p-3 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl bg-blue-50/50 hover:bg-blue-50 text-left flex items-center justify-between transition-all group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                          <User size={18} />
+                        </div>
+                        <div>
+                          <span className="font-bold text-blue-900 text-xs block">Select Driver for Order *</span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Opens recent drivers by default. Search by Name, Phone No, Vehicle No, or CNIC.
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-blue-600 group-hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-xs shrink-0">
+                        <Search size={14} />
+                        <span>Search Driver</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Driver Phone 1 *</label>
+                    <label className="block text-slate-700 font-bold mb-1 text-xs">Driver Phone 1 *</label>
                     <input
                       type="tel"
                       required
                       placeholder="Primary phone"
                       value={phone1}
                       onChange={(e) => setPhone1(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Driver Phone 2</label>
+                    <label className="block text-slate-700 font-bold mb-1 text-xs">Driver Phone 2</label>
                     <input
                       type="tel"
                       placeholder="Secondary / WhatsApp"
                       value={phone2}
                       onChange={(e) => setPhone2(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden"
+                      className="w-full p-2 border border-slate-300 rounded-xl bg-white focus:border-blue-500 focus:outline-hidden text-xs"
                     />
                   </div>
                 </div>
@@ -1309,6 +1433,177 @@ export default function OrdersTab({
               >
                 <Share2 size={15} />
                 <span>Share via WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MODAL 4: SEARCHABLE DRIVER PICKER MODAL */}
+      {showDriverPicker && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeBackdrop">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-fadeIn">
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+                  <User size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Select Driver for Order</h3>
+                  <p className="text-[11px] text-slate-300">Default shows most recent drivers. Search to find others.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDriverPicker(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  autoFocus
+                  value={driverSearchTerm}
+                  onChange={(e) => setDriverSearchTerm(e.target.value)}
+                  placeholder="Search Driver Name, Phone No, Vehicle Reg (e.g. LES-1234), or CNIC..."
+                  className="w-full pl-10 pr-10 py-2.5 border-2 border-slate-300 focus:border-blue-600 rounded-2xl text-xs bg-white text-slate-900 placeholder:text-slate-400 font-medium focus:outline-hidden transition-all shadow-xs"
+                />
+                {driverSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setDriverSearchTerm('')}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] font-semibold px-1">
+                {!driverSearchTerm.trim() ? (
+                  <span className="text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1">
+                    ⚡ Most Recent Drivers ({recentDrivers.length})
+                  </span>
+                ) : (
+                  <span className="text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 flex items-center gap-1">
+                    🔍 Search Results ({filteredDriversForPicker.length} Drivers Found)
+                  </span>
+                )}
+                <span className="text-slate-400 text-[10px]">Search by Name, Phone, Vehicle, CNIC</span>
+              </div>
+            </div>
+
+            {/* Driver List */}
+            <div className="p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[50vh]">
+              {!driverSearchTerm.trim() && (
+                <p className="text-[11px] text-slate-500 font-medium mb-1">
+                  Below are the most recently used drivers. Type in search bar above to search across all drivers.
+                </p>
+              )}
+
+              {filteredDriversForPicker.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                  <AlertCircle className="mx-auto text-slate-400" size={28} />
+                  <p className="text-xs font-bold text-slate-700">No Drivers Found</p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    No drivers match "{driverSearchTerm}". Try searching by phone number, vehicle registration number, or CNIC.
+                  </p>
+                </div>
+              ) : (
+                filteredDriversForPicker.map((d) => {
+                  const isSelected = d.id === driverId;
+                  const driverVehicles = vehicles.filter(v => v.driverId === d.id);
+                  const primaryPhone = d.phoneNumber || d.driverPhone1 || 'No Phone';
+                  const secondPhone = d.whatsAppNumber || d.driverPhone2;
+
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => {
+                        handleDriverChange(d.id);
+                        setShowDriverPicker(false);
+                        setDriverSearchTerm('');
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-blue-50/90 border-blue-500 shadow-xs ring-1 ring-blue-500'
+                          : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 overflow-hidden shadow-2xs ${
+                          isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          {d.photo ? (
+                            <img src={d.photo} alt={d.fullName} className="w-full h-full object-cover" />
+                          ) : (
+                            d.fullName.slice(0, 2).toUpperCase()
+                          )}
+                        </div>
+
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-slate-900 text-xs truncate">{d.fullName}</h4>
+                            {isSelected && (
+                              <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-blue-600 text-white shrink-0">
+                                SELECTED
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-600 font-medium">
+                            <span className="flex items-center gap-1 text-slate-800">
+                              📞 {primaryPhone}
+                              {secondPhone && <span className="text-slate-400"> / {secondPhone}</span>}
+                            </span>
+                            {d.cnicNumber && (
+                              <span className="text-slate-500">🪪 CNIC: {d.cnicNumber}</span>
+                            )}
+                          </div>
+
+                          {driverVehicles.length > 0 && (
+                            <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold pt-0.5">
+                              <Truck size={12} className="text-emerald-600 shrink-0" />
+                              <span className="truncate">
+                                Vehicle: {driverVehicles.map(v => `${v.registrationNumber} (${v.vehicleType || 'Vehicle'})`).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700'
+                        }`}
+                      >
+                        {isSelected ? 'Selected' : 'Select'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDriverPicker(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Close
               </button>
             </div>
           </div>

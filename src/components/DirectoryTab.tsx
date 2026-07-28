@@ -18,7 +18,9 @@ import {
   Truck,
   CheckCircle2, 
   AlertCircle,
-  Trash2
+  Trash2,
+  Edit,
+  Edit3
 } from 'lucide-react';
 import { Factory, Customer, Driver, Vehicle } from '../types';
 import DriversTab from './DriversTab';
@@ -37,6 +39,8 @@ interface DirectoryTabProps {
   onDeleteVehicle?: (id: string) => void;
   onAddFactory: (factory: Omit<Factory, 'id' | 'createdAt'>) => void;
   onAddCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => void;
+  onUpdateFactory?: (id: string, factory: Partial<Omit<Factory, 'id' | 'createdAt'>>) => void;
+  onUpdateCustomer?: (id: string, customer: Partial<Omit<Customer, 'id' | 'createdAt'>>) => void;
   onDeleteFactory?: (id: string) => void;
   onDeleteCustomer?: (id: string) => void;
   onSyncContact: (fullName: string, phoneNumber: string, role: 'Driver' | 'Factory Manager' | 'Customer Warehouse Manager') => Promise<void>;
@@ -56,6 +60,8 @@ export default function DirectoryTab({
   onDeleteVehicle,
   onAddFactory,
   onAddCustomer,
+  onUpdateFactory,
+  onUpdateCustomer,
   onDeleteFactory,
   onDeleteCustomer,
   onSyncContact
@@ -64,7 +70,10 @@ export default function DirectoryTab({
   const [searchQuery, setSearchQuery] = useState('');
 
   const [showAddFactory, setShowAddFactory] = useState(false);
+  const [editingFactory, setEditingFactory] = useState<Factory | null>(null);
+
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   // 1. Factory Form State
   const [factoryName, setFactoryName] = useState('');
@@ -84,34 +93,102 @@ export default function DirectoryTab({
   // Contact sync feedback tracking
   const [syncFeedback, setSyncFeedback] = useState<Record<string, 'idle' | 'syncing' | 'done' | 'error'>>({});
 
+  const openAddFactoryModal = () => {
+    setEditingFactory(null);
+    setFactoryName('');
+    setManagerName('');
+    setFactoryPhone('');
+    setFactoryAddress('');
+    setFactoryNotes('');
+    setShowAddFactory(true);
+  };
+
+  const openEditFactoryModal = (f: Factory) => {
+    setEditingFactory(f);
+    setFactoryName(f.factoryName || '');
+    setManagerName(f.managerName || '');
+    setFactoryPhone(f.phone || '');
+    setFactoryAddress(f.address || '');
+    setFactoryNotes(f.notes || '');
+    setShowAddFactory(true);
+  };
+
   const handleFactorySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAddFactory({
-      factoryName,
-      managerName,
-      phone: factoryPhone,
-      address: factoryAddress,
-      notes: factoryNotes
-    });
+    if (editingFactory) {
+      if (onUpdateFactory) {
+        onUpdateFactory(editingFactory.id, {
+          factoryName,
+          managerName,
+          phone: factoryPhone,
+          address: factoryAddress,
+          notes: factoryNotes
+        });
+      }
+    } else {
+      onAddFactory({
+        factoryName,
+        managerName,
+        phone: factoryPhone,
+        address: factoryAddress,
+        notes: factoryNotes
+      });
+    }
 
     setFactoryName('');
     setManagerName('');
     setFactoryPhone('');
     setFactoryAddress('');
     setFactoryNotes('');
+    setEditingFactory(null);
     setShowAddFactory(false);
+  };
+
+  const openAddCustomerModal = () => {
+    setEditingCustomer(null);
+    setWarehouseName('');
+    setCompany('');
+    setCustomerPhone('');
+    setCustomerAddress('');
+    setCustomerCity('');
+    setCustomerNotes('');
+    setShowAddCustomer(true);
+  };
+
+  const openEditCustomerModal = (c: Customer) => {
+    setEditingCustomer(c);
+    setWarehouseName(c.warehouseName || '');
+    setCompany(c.company || '');
+    setCustomerPhone(c.phone || '');
+    setCustomerAddress(c.address || '');
+    setCustomerCity(c.city || '');
+    setCustomerNotes(c.notes || '');
+    setShowAddCustomer(true);
   };
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAddCustomer({
-      warehouseName,
-      company,
-      phone: customerPhone,
-      address: customerAddress,
-      city: customerCity,
-      notes: customerNotes
-    });
+    if (editingCustomer) {
+      if (onUpdateCustomer) {
+        onUpdateCustomer(editingCustomer.id, {
+          warehouseName,
+          company,
+          phone: customerPhone,
+          address: customerAddress,
+          city: customerCity,
+          notes: customerNotes
+        });
+      }
+    } else {
+      onAddCustomer({
+        warehouseName,
+        company,
+        phone: customerPhone,
+        address: customerAddress,
+        city: customerCity,
+        notes: customerNotes
+      });
+    }
 
     setWarehouseName('');
     setCompany('');
@@ -119,6 +196,7 @@ export default function DirectoryTab({
     setCustomerAddress('');
     setCustomerCity('');
     setCustomerNotes('');
+    setEditingCustomer(null);
     setShowAddCustomer(false);
   };
 
@@ -236,8 +314,8 @@ export default function DirectoryTab({
 
             <button
               onClick={() => {
-                if (subTab === 'factories') setShowAddFactory(true);
-                else setShowAddCustomer(true);
+                if (subTab === 'factories') openAddFactoryModal();
+                else openAddCustomerModal();
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
             >
@@ -253,56 +331,78 @@ export default function DirectoryTab({
               No factories listed yet. Tap "Add New" to index a sourcing partner.
             </div>
           ) : (
-            filteredFactories.map(f => (
-              <div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-2.5 relative">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">{f.factoryName}</h4>
-                    <p className="text-xs text-slate-500 font-semibold">Manager: {f.managerName}</p>
-                  </div>
+            filteredFactories.map(f => {
+              const isIncomplete = !f.phone || !f.address || !f.managerName;
+              return (
+                <div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-2.5 relative">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 text-sm">{f.factoryName}</h4>
+                        {isIncomplete && (
+                          <button 
+                            onClick={() => openEditFactoryModal(f)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all cursor-pointer"
+                          >
+                            <AlertCircle size={10} /> Complete Profile
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 font-semibold">Manager: {f.managerName || 'Not specified'}</p>
+                    </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {/* Sync with Google contacts button */}
-                    <button
-                      onClick={() => triggerContactSync(f.id, f.managerName, f.phone, 'Factory Manager')}
-                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
-                        syncFeedback[f.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                        syncFeedback[f.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
-                        'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
-                      }`}
-                    >
-                      <Share2 size={12} />
-                      {syncFeedback[f.id] === 'done' ? 'Synced' : syncFeedback[f.id] === 'syncing' ? 'Syncing...' : 'Sync'}
-                    </button>
-
-                    {onDeleteFactory && (
+                    <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete factory profile "${f.factoryName}"?`)) {
-                            onDeleteFactory(f.id);
-                          }
-                        }}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                        title="Delete Factory"
+                        onClick={() => openEditFactoryModal(f)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1 text-[11px] font-bold"
+                        title="Edit / Complete Factory Profile"
                       >
-                        <Trash2 size={14} />
+                        <Edit size={14} />
+                        <span className="hidden sm:inline">Edit</span>
                       </button>
-                    )}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">
-                  <p className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {f.phone}</p>
-                  <p className="flex items-center gap-1 truncate"><MapPin size={12} className="text-slate-400 shrink-0" /> {f.address}</p>
-                </div>
+                      {/* Sync with Google contacts button */}
+                      <button
+                        onClick={() => triggerContactSync(f.id, f.managerName || f.factoryName, f.phone || '', 'Factory Manager')}
+                        className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
+                          syncFeedback[f.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                          syncFeedback[f.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
+                          'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
+                        }`}
+                      >
+                        <Share2 size={12} />
+                        {syncFeedback[f.id] === 'done' ? 'Synced' : syncFeedback[f.id] === 'syncing' ? 'Syncing...' : 'Sync'}
+                      </button>
 
-                {f.notes && (
-                  <div className="bg-slate-50 p-2 rounded-xl text-[10px] text-slate-500 italic mt-1 border border-slate-100/50">
-                    Remarks: {f.notes}
+                      {onDeleteFactory && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete factory profile "${f.factoryName}"?`)) {
+                              onDeleteFactory(f.id);
+                            }
+                          }}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                          title="Delete Factory"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">
+                    <p className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {f.phone || 'No phone'}</p>
+                    <p className="flex items-center gap-1 truncate"><MapPin size={12} className="text-slate-400 shrink-0" /> {f.address || 'No address'}</p>
+                  </div>
+
+                  {f.notes && (
+                    <div className="bg-slate-50 p-2 rounded-xl text-[10px] text-slate-500 italic mt-1 border border-slate-100/50">
+                      Remarks: {f.notes}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )
         ) : (
           filteredCustomers.length === 0 ? (
@@ -310,71 +410,98 @@ export default function DirectoryTab({
               No customers listed yet. Tap "Add New" to index a destination warehouse.
             </div>
           ) : (
-            filteredCustomers.map(c => (
-              <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-2.5 relative">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">{c.warehouseName}</h4>
-                    <p className="text-xs text-slate-500 font-semibold">Company: {c.company} · {c.city}</p>
-                  </div>
+            filteredCustomers.map(c => {
+              const isIncomplete = !c.phone || !c.address || !c.city || !c.company;
+              return (
+                <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-2.5 relative">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 text-sm">{c.warehouseName}</h4>
+                        {isIncomplete && (
+                          <button 
+                            onClick={() => openEditCustomerModal(c)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all cursor-pointer"
+                          >
+                            <AlertCircle size={10} /> Complete Profile
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 font-semibold">Company: {c.company || 'Not specified'} {c.city ? `· ${c.city}` : ''}</p>
+                    </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {/* Sync to Contacts */}
-                    <button
-                      onClick={() => triggerContactSync(c.id, `${c.warehouseName} Manager`, c.phone, 'Customer Warehouse Manager')}
-                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
-                        syncFeedback[c.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                        syncFeedback[c.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
-                        'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
-                      }`}
-                    >
-                      <Share2 size={12} />
-                      {syncFeedback[c.id] === 'done' ? 'Synced' : syncFeedback[c.id] === 'syncing' ? 'Syncing...' : 'Sync'}
-                    </button>
-
-                    {onDeleteCustomer && (
+                    <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete customer warehouse profile "${c.warehouseName}"?`)) {
-                            onDeleteCustomer(c.id);
-                          }
-                        }}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                        title="Delete Warehouse"
+                        onClick={() => openEditCustomerModal(c)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1 text-[11px] font-bold"
+                        title="Edit / Complete Customer Profile"
                       >
-                        <Trash2 size={14} />
+                        <Edit size={14} />
+                        <span className="hidden sm:inline">Edit</span>
                       </button>
-                    )}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">
-                  <p className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {c.phone}</p>
-                  <p className="flex items-center gap-1 truncate"><MapPin size={12} className="text-slate-400 shrink-0" /> {c.address}</p>
-                </div>
+                      {/* Sync to Contacts */}
+                      <button
+                        onClick={() => triggerContactSync(c.id, `${c.warehouseName} Manager`, c.phone || '', 'Customer Warehouse Manager')}
+                        className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all ${
+                          syncFeedback[c.id] === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                          syncFeedback[c.id] === 'syncing' ? 'bg-slate-50 text-slate-500 border-slate-200 animate-pulse' :
+                          'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200'
+                        }`}
+                      >
+                        <Share2 size={12} />
+                        {syncFeedback[c.id] === 'done' ? 'Synced' : syncFeedback[c.id] === 'syncing' ? 'Syncing...' : 'Sync'}
+                      </button>
 
-                {c.notes && (
-                  <div className="bg-slate-50 p-2 rounded-xl text-[10px] text-slate-500 italic mt-1 border border-slate-100/50">
-                    Remarks: {c.notes}
+                      {onDeleteCustomer && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete customer warehouse profile "${c.warehouseName}"?`)) {
+                              onDeleteCustomer(c.id);
+                            }
+                          }}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                          title="Delete Warehouse"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-50 pt-2.5 font-semibold">
+                    <p className="flex items-center gap-1"><Phone size={12} className="text-slate-400" /> {c.phone || 'No phone'}</p>
+                    <p className="flex items-center gap-1 truncate"><MapPin size={12} className="text-slate-400 shrink-0" /> {c.address || 'No address'}</p>
+                  </div>
+
+                  {c.notes && (
+                    <div className="bg-slate-50 p-2 rounded-xl text-[10px] text-slate-500 italic mt-1 border border-slate-100/50">
+                      Remarks: {c.notes}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )
         )}
       </div>
       </>
       )}
 
-      {/* Add Factory Dialog modal */}
+      {/* Add / Edit Factory Dialog modal */}
       {showAddFactory && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
           <form onSubmit={handleFactorySubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
             <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
-              <h3 className="text-sm font-bold text-slate-800">Add Sourcing Factory</h3>
+              <h3 className="text-sm font-bold text-slate-800">
+                {editingFactory ? 'Complete / Edit Factory Profile' : 'Add Sourcing Factory'}
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowAddFactory(false)}
+                onClick={() => {
+                  setShowAddFactory(false);
+                  setEditingFactory(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 font-bold"
               >
                 <X size={18} />
@@ -466,15 +593,20 @@ export default function DirectoryTab({
         document.body
       )}
 
-      {/* Add Customer Dialog modal */}
+      {/* Add / Edit Customer Dialog modal */}
       {showAddCustomer && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex justify-center items-start sm:items-center p-2 sm:p-4 overflow-y-auto animate-fadeBackdrop">
           <form onSubmit={handleCustomerSubmit} className="relative bg-white rounded-3xl w-full max-w-md max-h-[92vh] sm:max-h-[90vh] my-auto flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
             <div className="flex justify-between items-center border-b border-slate-100 p-4 sm:p-5 shrink-0">
-              <h3 className="text-sm font-bold text-slate-800">Add Destination Customer Warehouse</h3>
+              <h3 className="text-sm font-bold text-slate-800">
+                {editingCustomer ? 'Complete / Edit Customer Warehouse Profile' : 'Add Destination Customer Warehouse'}
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowAddCustomer(false)}
+                onClick={() => {
+                  setShowAddCustomer(false);
+                  setEditingCustomer(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 font-bold"
               >
                 <X size={18} />
